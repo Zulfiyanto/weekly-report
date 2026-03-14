@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: TEXT_MID,
     backgroundColor: WHITE,
-    paddingBottom: 56,
+    paddingBottom: 64,
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────
@@ -148,12 +148,13 @@ const styles = StyleSheet.create({
   itemImagesWrapper: { marginTop: 10, marginLeft: 30 },
   itemImageContainer: {
     width: "100%",
-    marginBottom: 8,
+    marginBottom: 10,
     borderRadius: 6,
     overflow: "hidden",
     border: `1pt solid ${BORDER}`,
   },
-  itemImage: { width: "100%", objectFit: "contain" },
+  // maxHeight caps very tall images so they never overflow a single page
+  itemImage: { width: "100%", maxHeight: 340, objectFit: "contain" },
   itemImageCaption: {
     fontSize: 7,
     color: TEXT_MUTED,
@@ -262,7 +263,8 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
           ) : (
             items.map((item, idx) => (
               <View key={item.id} style={styles.workItemBlock}>
-                <View style={styles.workItemRow}>
+                {/* Text block — keep badge + title + description together, no mid-text splits */}
+                <View style={styles.workItemRow} wrap={false}>
                   <View style={styles.workItemBadge}>
                     <Text style={styles.workItemBadgeText}>{idx + 1}</Text>
                   </View>
@@ -283,10 +285,12 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
                   </View>
                 </View>
 
+                {/* Images — each container is atomic (wrap=false), so it breaks to next page
+                    cleanly rather than being cut mid-image or overlapping the footer */}
                 {item.images.length > 0 && (
                   <View style={styles.itemImagesWrapper}>
                     {item.images.map((src, imgIdx) => (
-                      <View key={imgIdx} style={styles.itemImageContainer}>
+                      <View key={imgIdx} style={styles.itemImageContainer} wrap={false}>
                         <Image src={src} style={styles.itemImage} />
                         <Text style={styles.itemImageCaption}>
                           Bukti {idx + 1}.{imgIdx + 1}

@@ -28,7 +28,8 @@
       "Bash(cd D:/FRONTEND/weekly-app && npm install localforage sonner @radix-ui/react-dialog 2>&1 | tail -5)",
       "Bash(cd D:/FRONTEND/weekly-app && npm run build 2>&1)",
       "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx tsc --noEmit 2>&1 | head -60)",
-      "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx next build 2>&1 | tail -20)"
+      "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx next build 2>&1 | tail -20)",
+      "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx tsc --noEmit 2>&1)"
     ]
   }
 }
