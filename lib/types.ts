@@ -1,8 +1,17 @@
+export interface WorkTag {
+  id: string
+  label: string
+  color: string       // hex
+  isDefault: boolean
+}
+
 export interface WorkItem {
   id: string
+  title: string
   description: string
   isEnhancing: boolean
-  imageKeys: string[]   // per-item images
+  imageKeys: string[]
+  tags: string[]      // tag IDs
 }
 
 export interface WorkTemplate {

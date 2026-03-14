@@ -1,19 +1,27 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import type { WorkItem } from "@/lib/types"
+import type { WorkItem, WorkTag } from "@/lib/types"
 import { storeImage, deleteImage, loadImages, getTotalSizeLabel } from "@/lib/imageStorage"
 import { Trash2, Sparkles, GripVertical, Plus, BookmarkPlus, ImagePlus, X, ZoomIn } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 
 const MAX_DESC = 500
+const MAX_TITLE = 80
 const MAX_IMAGES_PER_ITEM = 5
+
+const TAG_COLORS = [
+  "#ef4444", "#f97316", "#eab308", "#22c55e",
+  "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280",
+]
 
 interface WorkItemListProps {
   items: WorkItem[]
   onChange: (items: WorkItem[]) => void
   onSaveTemplate: (description: string) => void
+  allTags: WorkTag[]
+  onTagsChange: (tags: WorkTag[]) => void
 }
 
 function generateId(): string {
@@ -63,7 +71,6 @@ function ItemImages({
     if (files) processFiles(Array.from(files))
   }
 
-  // ── Paste handler ───────────────────────────────────────────────────────────
   const handlePaste = (e: React.ClipboardEvent | ClipboardEvent) => {
     const items = e.clipboardData?.items
     if (!items) return
@@ -78,7 +85,6 @@ function ItemImages({
     }
   }
 
-  // Global paste listener while paste zone is focused
   useEffect(() => {
     if (!pasteActive) return
     const handler = (e: ClipboardEvent) => handlePaste(e)
@@ -96,7 +102,6 @@ function ItemImages({
 
   return (
     <div className="mt-2 space-y-2">
-      {/* Thumbnails */}
       {previews.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {previews.map((src, idx) => (
@@ -122,7 +127,6 @@ function ItemImages({
             </div>
           ))}
 
-          {/* Add more */}
           {count < MAX_IMAGES_PER_ITEM && (
             <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
               className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-0.5 text-gray-400 hover:border-blue-400 hover:text-blue-400 hover:bg-blue-50 transition-all shrink-0"
@@ -134,7 +138,6 @@ function ItemImages({
         </div>
       )}
 
-      {/* Upload + Paste zone */}
       {count < MAX_IMAGES_PER_ITEM && (
         <div
           ref={pasteZoneRef}
@@ -175,7 +178,6 @@ function ItemImages({
         </div>
       )}
 
-      {/* Counter + hint when active */}
       {count > 0 && (
         <p className="text-[10px] text-gray-400">
           {count}/{MAX_IMAGES_PER_ITEM} gambar · {getTotalSizeLabel(previews)}
@@ -190,7 +192,6 @@ function ItemImages({
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp"
         multiple className="hidden" onChange={(e) => handleFileInput(e.target.files)} />
 
-      {/* Lightbox */}
       {lightbox && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
@@ -213,9 +214,13 @@ function ItemImages({
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkItemListProps) {
+export default function WorkItemList({ items, onChange, onSaveTemplate, allTags, onTagsChange }: WorkItemListProps) {
+  const [showAddTag, setShowAddTag] = useState<string | null>(null) // item id
+  const [newTagLabel, setNewTagLabel] = useState("")
+  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[5])
+
   const addItem = () => {
-    onChange([...items, { id: generateId(), description: "", isEnhancing: false, imageKeys: [] }])
+    onChange([...items, { id: generateId(), title: "", description: "", isEnhancing: false, imageKeys: [], tags: [] }])
   }
 
   const updateItem = (id: string, patch: Partial<WorkItem>) => {
@@ -224,7 +229,6 @@ export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkIt
 
   const removeItem = (id: string) => {
     if (items.length <= 1) return
-    // Delete associated images
     const item = items.find((i) => i.id === id)
     if (item?.imageKeys.length) {
       item.imageKeys.forEach((key) => deleteImage(key))
@@ -261,6 +265,37 @@ export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkIt
     }
   }
 
+  const toggleTag = (itemId: string, tagId: string) => {
+    const item = items.find((i) => i.id === itemId)
+    if (!item) return
+    const tags = item.tags.includes(tagId)
+      ? item.tags.filter((t) => t !== tagId)
+      : [...item.tags, tagId]
+    updateItem(itemId, { tags })
+  }
+
+  const handleAddTag = (itemId: string) => {
+    const label = newTagLabel.trim()
+    if (!label) return
+    const newTag: WorkTag = {
+      id: "tag_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+      label: label.slice(0, 20),
+      color: newTagColor,
+      isDefault: false,
+    }
+    onTagsChange([...allTags, newTag])
+    const item = items.find((i) => i.id === itemId)
+    if (item) updateItem(itemId, { tags: [...item.tags, newTag.id] })
+    setShowAddTag(null)
+    setNewTagLabel("")
+    setNewTagColor(TAG_COLORS[5])
+  }
+
+  const handleDeleteTag = (tagId: string) => {
+    onTagsChange(allTags.filter((t) => t.id !== tagId))
+    onChange(items.map((item) => ({ ...item, tags: item.tags.filter((t) => t !== tagId) })))
+  }
+
   return (
     <div className="space-y-3">
       {items.length === 0 && (
@@ -280,7 +315,7 @@ export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkIt
             key={item.id}
             className="group rounded-xl bg-gray-50 border border-gray-100 hover:border-blue-100 hover:bg-blue-50/30 transition-all overflow-hidden"
           >
-            {/* Number badge + textarea row */}
+            {/* Number badge + content + actions */}
             <div className="flex gap-3 p-4">
               {/* Number */}
               <div className="flex flex-col items-center gap-1.5 shrink-0 pt-0.5">
@@ -290,8 +325,24 @@ export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkIt
                 <GripVertical className="h-3.5 w-3.5 text-gray-300 group-hover:text-gray-400 transition-colors" />
               </div>
 
-              {/* Textarea */}
-              <div className="flex-1 min-w-0 space-y-1">
+              {/* Content */}
+              <div className="flex-1 min-w-0 space-y-2">
+                {/* Title input */}
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => updateItem(item.id, { title: e.target.value.slice(0, MAX_TITLE) })}
+                  placeholder={`Judul task ${idx + 1}...`}
+                  maxLength={MAX_TITLE}
+                  disabled={item.isEnhancing}
+                  className={`w-full text-sm font-semibold bg-transparent border-0 border-b pb-1 outline-none placeholder:font-normal transition-colors ${
+                    !item.title.trim()
+                      ? "border-red-200 placeholder:text-red-300 focus:border-red-400"
+                      : "border-gray-200 placeholder:text-gray-300 focus:border-blue-400"
+                  }`}
+                />
+
+                {/* Textarea */}
                 <Textarea
                   value={item.description}
                   onChange={(e) =>
@@ -347,6 +398,109 @@ export default function WorkItemList({ items, onChange, onSaveTemplate }: WorkIt
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
+            </div>
+
+            {/* Tag section */}
+            <div className="px-4 pb-3 pt-2 border-t border-gray-100/80 pl-14">
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {allTags.map((tag) => {
+                  const selected = item.tags.includes(tag.id)
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTag(item.id, tag.id)}
+                      className="group/tag relative inline-flex items-center gap-0.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-all"
+                      style={
+                        selected
+                          ? {
+                              backgroundColor: tag.color,
+                              color: "white",
+                              boxShadow: `0 0 0 2px white, 0 0 0 3.5px ${tag.color}`,
+                            }
+                          : {
+                              backgroundColor: tag.color + "18",
+                              color: tag.color,
+                              border: `1px solid ${tag.color}50`,
+                            }
+                      }
+                    >
+                      {tag.label}
+                      {!tag.isDefault && (
+                        <span
+                          role="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag.id) }}
+                          className="hidden group-hover/tag:inline-flex items-center justify-center w-3 h-3 rounded-full bg-black/15 hover:bg-black/30 ml-0.5 text-[9px] leading-none"
+                        >
+                          ×
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+
+                {/* Add tag button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddTag(item.id)
+                    setNewTagLabel("")
+                    setNewTagColor(TAG_COLORS[5])
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-gray-400 border border-dashed border-gray-300 hover:border-blue-400 hover:text-blue-500 transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  Tag baru
+                </button>
+              </div>
+
+              {/* Inline add-tag form */}
+              {showAddTag === item.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-white p-2.5 border border-gray-200 shadow-sm">
+                  <input
+                    autoFocus
+                    value={newTagLabel}
+                    onChange={(e) => setNewTagLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddTag(item.id)
+                      if (e.key === "Escape") setShowAddTag(null)
+                    }}
+                    placeholder="Nama tag..."
+                    maxLength={20}
+                    className="text-xs px-2 py-1 rounded border border-gray-200 bg-gray-50 flex-1 min-w-[100px] outline-none focus:border-blue-400"
+                  />
+                  <div className="flex gap-1.5 items-center">
+                    {TAG_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewTagColor(color)}
+                        className="w-4 h-4 rounded-full transition-transform shrink-0"
+                        style={{
+                          backgroundColor: color,
+                          transform: newTagColor === color ? "scale(1.35)" : "scale(1)",
+                          boxShadow: newTagColor === color ? `0 0 0 1.5px white, 0 0 0 3px ${color}` : "none",
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAddTag(item.id)}
+                    disabled={!newTagLabel.trim()}
+                    className="text-xs px-2.5 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                  >
+                    Tambah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAddTag(null); setNewTagLabel("") }}
+                    className="text-xs px-2.5 py-1 rounded text-gray-500 hover:bg-gray-100 transition-colors"
+                  >
+                    Batal
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Image section */}

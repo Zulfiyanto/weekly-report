@@ -12,11 +12,14 @@ import {
   loadHistory,
   loadTemplates,
   saveTemplate,
+  loadTags,
+  addTag,
+  deleteTag,
 } from "@/lib/storage"
 import { deleteImages, loadImages } from "@/lib/imageStorage"
 import type { PDFWorkItem } from "@/lib/pdfGenerator"
 import { generatePDF, getPDFFileName, type PDFDocProps } from "@/lib/pdfGenerator"
-import type { WorkItem, WorkTemplate, ReportHistory } from "@/lib/types"
+import type { WorkItem, WorkTag, WorkTemplate, ReportHistory } from "@/lib/types"
 import WorkItemList from "./WorkItemList"
 import HistoryPanel from "./HistoryPanel"
 import TemplateChips from "./TemplateChips"
@@ -45,12 +48,13 @@ function generateTemplateId(): string {
   return "tpl_" + Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-const DEFAULT_ITEM: WorkItem = { id: "", description: "", isEnhancing: false, imageKeys: [] }
+const DEFAULT_ITEM: WorkItem = { id: "", title: "", description: "", isEnhancing: false, imageKeys: [], tags: [] }
 
 export default function ReportForm() {
   const [items, setItems] = useState<WorkItem[]>([
     { ...DEFAULT_ITEM, id: generateId() },
   ])
+  const [tags, setTags] = useState<WorkTag[]>([])
   const [templates, setTemplates] = useState<WorkTemplate[]>([])
   const [history, setHistory] = useState<ReportHistory[]>([])
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
@@ -83,6 +87,7 @@ export default function ReportForm() {
       setDraftSavedAt(draft.savedAt)
       toast.success("Draft terakhir berhasil dimuat")
     }
+    setTags(loadTags())
     setTemplates(loadTemplates())
     setHistory(loadHistory())
   }, [setValue])
@@ -138,9 +143,19 @@ export default function ReportForm() {
     toast.success("Draft berhasil dihapus")
   }, [items, setValue])
 
+  // ── Tag handlers ───────────────────────────────────────────────────────────
+  const handleTagsChange = (newTags: WorkTag[]) => {
+    setTags(newTags)
+    // Persist: find added or removed tag
+    const added = newTags.find((t) => !tags.find((e) => e.id === t.id))
+    const removed = tags.find((t) => !newTags.find((e) => e.id === t.id))
+    if (added) addTag(added)
+    if (removed) deleteTag(removed.id)
+  }
+
   // ── Template handlers ──────────────────────────────────────────────────────
   const handleUseTemplate = (description: string) => {
-    setItems((prev) => [...prev, { id: generateId(), description, isEnhancing: false, imageKeys: [] }])
+    setItems((prev) => [...prev, { id: generateId(), title: "", description, isEnhancing: false, imageKeys: [], tags: [] }])
   }
 
   const handleSaveTemplate = (description: string) => {
@@ -163,12 +178,21 @@ export default function ReportForm() {
         toast.error("Tambahkan setidaknya satu item pekerjaan")
         return null
       }
-      // Load images per item in parallel
+      if (filledItems.some((i) => !i.title.trim())) {
+        toast.error("Setiap item pekerjaan harus memiliki judul")
+        return null
+      }
+      // Load images per item in parallel + resolve tags
       const pdfItems: PDFWorkItem[] = await Promise.all(
         filledItems.map(async (item) => ({
           id: item.id,
+          title: item.title,
           description: item.description,
           images: item.imageKeys.length > 0 ? await loadImages(item.imageKeys) : [],
+          tags: item.tags
+            .map((tagId) => tags.find((t) => t.id === tagId))
+            .filter((t): t is WorkTag => t !== undefined)
+            .map((t) => ({ label: t.label, color: t.color })),
         }))
       )
       return {
@@ -364,6 +388,8 @@ export default function ReportForm() {
               items={items}
               onChange={setItems}
               onSaveTemplate={handleSaveTemplate}
+              allTags={tags}
+              onTagsChange={handleTagsChange}
             />
           </div>
         </div>

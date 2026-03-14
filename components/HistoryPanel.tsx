@@ -60,8 +60,10 @@ export default function HistoryPanel({ history, onHistoryChange }: HistoryPanelP
       const pdfItems = await Promise.all(
         entry.items.map(async (item) => ({
           id: item.id,
+          title: item.title ?? "",
           description: item.description,
           images: item.imageKeys?.length ? await loadImages(item.imageKeys) : [],
+          tags: [],
         }))
       )
       const blob = await generatePDF({

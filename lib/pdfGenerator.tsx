@@ -138,6 +138,12 @@ const styles = StyleSheet.create({
     lineHeight: 1.65,
   },
 
+  // ── Tags & Title ─────────────────────────────────────────────────────────────
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 4 },
+  tagChip: { borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2, marginRight: 4, marginBottom: 2 },
+  tagChipText: { fontSize: 7, fontWeight: 700, color: WHITE },
+  workItemTitle: { fontSize: 10.5, fontWeight: 700, color: TEXT_DARK, marginBottom: 2 },
+
   // ── Images ───────────────────────────────────────────────────────────────────
   itemImagesWrapper: { marginTop: 10, marginLeft: 30 },
   itemImageContainer: {
@@ -179,8 +185,10 @@ const styles = StyleSheet.create({
 
 export interface PDFWorkItem {
   id: string
+  title: string
   description: string
   images: string[]
+  tags: Array<{ label: string; color: string }>
 }
 
 export interface PDFDocProps {
@@ -258,7 +266,21 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
                   <View style={styles.workItemBadge}>
                     <Text style={styles.workItemBadgeText}>{idx + 1}</Text>
                   </View>
-                  <Text style={styles.workItemText}>{item.description}</Text>
+                  <View style={{ flex: 1 }}>
+                    {item.tags.length > 0 && (
+                      <View style={styles.tagsRow}>
+                        {item.tags.map((tag, i) => (
+                          <View key={i} style={[styles.tagChip, { backgroundColor: tag.color }]}>
+                            <Text style={styles.tagChipText}>{tag.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                    {item.title ? (
+                      <Text style={styles.workItemTitle}>{item.title}</Text>
+                    ) : null}
+                    <Text style={styles.workItemText}>{item.description}</Text>
+                  </View>
                 </View>
 
                 {item.images.length > 0 && (

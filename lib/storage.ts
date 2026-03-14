@@ -1,8 +1,19 @@
-import type { WorkItem, WorkTemplate, ReportDraft, ReportHistory } from "./types"
+import type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory } from "./types"
 
 const DRAFT_KEY = "weekly_report_draft"
 const HISTORY_KEY = "weekly_report_history"
 const TEMPLATES_KEY = "weekly_report_templates"
+const TAGS_KEY = "weekly_report_tags"
+
+export const DEFAULT_TAGS: WorkTag[] = [
+  { id: "tag_backend",   label: "Backend",      color: "#3b82f6", isDefault: true },
+  { id: "tag_frontend",  label: "Frontend",     color: "#22c55e", isDefault: true },
+  { id: "tag_testing",   label: "Testing",      color: "#f97316", isDefault: true },
+  { id: "tag_devops",    label: "DevOps",        color: "#8b5cf6", isDefault: true },
+  { id: "tag_design",    label: "Design",        color: "#ec4899", isDefault: true },
+  { id: "tag_meeting",   label: "Meeting",       color: "#6b7280", isDefault: true },
+  { id: "tag_docs",      label: "Dokumentasi",   color: "#14b8a6", isDefault: true },
+]
 
 export const DEFAULT_TEMPLATES: WorkTemplate[] = [
   {
@@ -43,6 +54,36 @@ export const DEFAULT_TEMPLATES: WorkTemplate[] = [
   },
 ]
 
+// ─── Tags ────────────────────────────────────────────────────────────────────
+
+export function loadTags(): WorkTag[] {
+  if (typeof window === "undefined") return DEFAULT_TAGS
+  const raw = localStorage.getItem(TAGS_KEY)
+  if (!raw) {
+    localStorage.setItem(TAGS_KEY, JSON.stringify(DEFAULT_TAGS))
+    return DEFAULT_TAGS
+  }
+  try {
+    return JSON.parse(raw) as WorkTag[]
+  } catch {
+    return DEFAULT_TAGS
+  }
+}
+
+export function addTag(tag: WorkTag): void {
+  if (typeof window === "undefined") return
+  const tags = loadTags()
+  if (tags.find((t) => t.id === tag.id)) return
+  tags.push(tag)
+  localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
+}
+
+export function deleteTag(id: string): void {
+  if (typeof window === "undefined") return
+  const tags = loadTags().filter((t) => !(t.id === id && !t.isDefault))
+  localStorage.setItem(TAGS_KEY, JSON.stringify(tags))
+}
+
 // ─── Draft ───────────────────────────────────────────────────────────────────
 
 export function saveDraft(draft: Omit<ReportDraft, "savedAt">): void {
@@ -57,10 +98,12 @@ export function loadDraft(): ReportDraft | null {
   if (!raw) return null
   try {
     const parsed = JSON.parse(raw)
-    // Migration: ensure each item has imageKeys
+    // Migration: ensure each item has required fields
     if (Array.isArray(parsed.items)) {
       parsed.items = parsed.items.map((item: WorkItem) => ({
         ...item,
+        title: item.title ?? "",
+        tags: item.tags ?? [],
         imageKeys: item.imageKeys ?? [],
       }))
     }
@@ -98,7 +141,12 @@ export function loadHistory(): ReportHistory[] {
       ...entry,
       hasImages: entry.hasImages ?? false,
       items: Array.isArray(entry.items)
-        ? entry.items.map((item: WorkItem) => ({ ...item, imageKeys: item.imageKeys ?? [] }))
+        ? entry.items.map((item: WorkItem) => ({
+            ...item,
+            title: item.title ?? "",
+            tags: item.tags ?? [],
+            imageKeys: item.imageKeys ?? [],
+          }))
         : [],
     }))
   } catch {
@@ -150,4 +198,4 @@ export function deleteTemplate(id: string): void {
 }
 
 // Re-export types for convenience
-export type { WorkItem, WorkTemplate, ReportDraft, ReportHistory }
+export type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory }

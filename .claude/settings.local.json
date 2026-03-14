@@ -26,7 +26,9 @@
       "Bash(cmd /c \"wmic process where \\\\\"name='node.exe'\\\\\" get ProcessId,CommandLine 2>&1\")",
       "Bash(cmd /c \"taskkill /F /IM node.exe /T 2>&1\" && rm -f \"D:/FRONTEND/weekly-app/.next/dev/lock\")",
       "Bash(cd D:/FRONTEND/weekly-app && npm install localforage sonner @radix-ui/react-dialog 2>&1 | tail -5)",
-      "Bash(cd D:/FRONTEND/weekly-app && npm run build 2>&1)"
+      "Bash(cd D:/FRONTEND/weekly-app && npm run build 2>&1)",
+      "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx tsc --noEmit 2>&1 | head -60)",
+      "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx next build 2>&1 | tail -20)"
     ]
   }
 }
