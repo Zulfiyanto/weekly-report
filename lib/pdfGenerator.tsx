@@ -159,8 +159,10 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     color: BLUE,
   },
-  workItemText: {
+  workItemContent: {
     flex: 1,
+  },
+  workItemText: {
     fontSize: 10,
     color: TEXT_MID,
     lineHeight: 1.65,
@@ -173,22 +175,28 @@ const styles = StyleSheet.create({
   workItemTitle: { fontSize: 10.5, fontWeight: 700, color: TEXT_DARK, marginBottom: 2 },
 
   // ── Images ───────────────────────────────────────────────────────────────────
-  itemImagesWrapper: { marginTop: 10, marginLeft: 30 },
+  itemImagesWrapper: { marginTop: 12 },
   itemImageContainer: {
     width: "100%",
-    marginBottom: 10,
+    height: 260,          // explicit fixed height — prevents overflow into text below
+    marginBottom: 12,
     borderRadius: 6,
-    overflow: "hidden",
     border: `1pt solid ${BORDER}`,
+    backgroundColor: "#f9fafb",
+    overflow: "hidden",
   },
-  // maxHeight caps very tall images so they never overflow a single page
-  itemImage: { width: "100%", maxHeight: 340, objectFit: "contain" },
+  itemImage: {
+    width: "100%",
+    height: 238,          // container height minus caption height
+    objectFit: "contain", // letterbox portrait images
+  },
   itemImageCaption: {
     fontSize: 7,
     color: TEXT_MUTED,
     textAlign: "center",
     paddingVertical: 4,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#f0f4f8",
+    borderTop: `1pt solid ${BORDER}`,
   },
 
   // ── Empty ────────────────────────────────────────────────────────────────────
@@ -307,12 +315,14 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
           ) : (
             items.map((item, idx) => (
               <View key={item.id} style={styles.workItemBlock} wrap>
-                {/* Text block — keep badge + title + description together, no mid-text splits */}
-                <View style={styles.workItemRow} wrap={false}>
+                <View style={styles.workItemRow}>
+                  {/* Number badge */}
                   <View style={styles.workItemBadge}>
                     <Text style={styles.workItemBadgeText}>{idx + 1}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
+
+                  {/* Content column — images live here so they always follow description */}
+                  <View style={styles.workItemContent}>
                     {item.tags.length > 0 && (
                       <View style={styles.tagsRow}>
                         {item.tags.map((tag, i) => (
@@ -326,23 +336,22 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
                       <Text style={styles.workItemTitle}>{item.title}</Text>
                     ) : null}
                     <Text style={styles.workItemText}>{item.description}</Text>
+
+                    {/* Images inside the same column — guaranteed to start after description */}
+                    {item.images.length > 0 && (
+                      <View style={styles.itemImagesWrapper}>
+                        {item.images.map((src, imgIdx) => (
+                          <View key={imgIdx} style={styles.itemImageContainer} wrap={false}>
+                            <Image src={src} style={styles.itemImage} />
+                            <Text style={styles.itemImageCaption}>
+                              Bukti {idx + 1}.{imgIdx + 1}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                   </View>
                 </View>
-
-                {/* Images — each container is atomic (wrap=false), so it breaks to next page
-                    cleanly rather than being cut mid-image or overlapping the footer */}
-                {item.images.length > 0 && (
-                  <View style={styles.itemImagesWrapper}>
-                    {item.images.map((src, imgIdx) => (
-                      <View key={imgIdx} style={styles.itemImageContainer} wrap={false}>
-                        <Image src={src} style={styles.itemImage} />
-                        <Text style={styles.itemImageCaption}>
-                          Bukti {idx + 1}.{imgIdx + 1}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
               </View>
             ))
           )}
