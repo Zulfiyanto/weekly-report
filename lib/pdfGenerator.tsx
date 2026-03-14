@@ -2,16 +2,22 @@ import { Document, Page, Text, View, StyleSheet, Image, Font, pdf } from "@react
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 
-// ── Register Roboto font ──────────────────────────────────────────────────────
-Font.register({
-  family: "Roboto",
-  fonts: [
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9vAw.ttf", fontWeight: 500 },
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc9.ttf", fontWeight: 700 },
-    { src: "https://fonts.gstatic.com/s/roboto/v30/KFOkCnqEu92Fr1Mu51xIIzc.ttf", fontWeight: 400, fontStyle: "italic" },
-  ],
-})
+// ── Register Roboto font (local — avoids external URL warnings in PDF viewers) ─
+let _fontsRegistered = false
+function ensureFonts() {
+  if (_fontsRegistered) return
+  _fontsRegistered = true
+  const base = typeof window !== "undefined" ? window.location.origin : ""
+  Font.register({
+    family: "Roboto",
+    fonts: [
+      { src: `${base}/fonts/Roboto-Regular.ttf`, fontWeight: 400 },
+      { src: `${base}/fonts/Roboto-Medium.ttf`,  fontWeight: 500 },
+      { src: `${base}/fonts/Roboto-Bold.ttf`,    fontWeight: 700 },
+      { src: `${base}/fonts/Roboto-Italic.ttf`,  fontWeight: 400, fontStyle: "italic" },
+    ],
+  })
+}
 
 const BLUE = "#1d4ed8"
 const BLUE_LIGHT = "#eff6ff"
@@ -356,6 +362,7 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
 }
 
 export async function generatePDF(data: PDFDocProps): Promise<Blob> {
+  ensureFonts()
   const blob = await pdf(<WeeklyReportPDF {...data} />).toBlob()
   return blob
 }
