@@ -7,7 +7,26 @@
       "Bash(cp -r D:/FRONTEND/weekly-app-new/. D:/FRONTEND/weekly-app/ && ls D:/FRONTEND/weekly-app/)",
       "Bash(cd D:/FRONTEND/weekly-app && npm install @react-pdf/renderer @google/generative-ai react-hook-form zod @hookform/resolvers date-fns react-day-picker 2>&1 | tail -5)",
       "Bash(cd D:/FRONTEND/weekly-app && npx shadcn@latest init --yes 2>&1 | tail -10)",
-      "Bash(cd D:/FRONTEND/weekly-app && npx shadcn@latest init -d 2>&1 | tail -10)"
+      "Bash(cd D:/FRONTEND/weekly-app && npx shadcn@latest init -d 2>&1 | tail -10)",
+      "Bash(cd D:/FRONTEND/weekly-app && npx shadcn@latest add card input label badge separator toast 2>&1 | tail -10)",
+      "Bash(cd D:/FRONTEND/weekly-app && npm install tinyexec && npx shadcn@latest add card input label badge separator toast 2>&1 | tail -10)",
+      "Bash(cd D:/FRONTEND/weekly-app && npm install @radix-ui/react-label @radix-ui/react-separator @radix-ui/react-scroll-area class-variance-authority 2>&1 | tail -5)",
+      "Bash(cd D:/FRONTEND/weekly-app && npx tsc --noEmit 2>&1 | head -50)",
+      "Bash(cd D:/FRONTEND/weekly-app && npm run build 2>&1 | tail -30)",
+      "Bash(pkill -f \"next dev\" 2>/dev/null || taskkill /F /IM node.exe 2>/dev/null || echo \"done\")",
+      "Bash(netstat -ano | findstr \":3000\" 2>/dev/null || echo \"Port 3000 sudah bebas\")",
+      "Bash(taskkill /PID 17244 /F 2>&1)",
+      "Bash(cmd /c \"taskkill /PID 17244 /F\")",
+      "Bash(cmd /c \"taskkill /PID 17244 /F 2>&1\")",
+      "Bash(cmd /c \"taskkill /F /PID 17244\" 2>&1; cmd /c \"netstat -ano | findstr :3000\" 2>&1 || echo \"bebas\")",
+      "Bash(cmd /c \"taskkill /F /PID 17244 && echo killed\" 2>&1)",
+      "Bash(cmd /c \"wmic process where ProcessId=17244 get ProcessId,Name,CommandLine 2>&1\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3000\" 2>&1 || echo \"bebas\")",
+      "Bash(cmd /c \"netstat -ano | findstr :3001\" 2>&1)",
+      "Bash(cmd /c \"wmic process where \\\\\"name='node.exe'\\\\\" get ProcessId,CommandLine 2>&1\")",
+      "Bash(cmd /c \"taskkill /F /IM node.exe /T 2>&1\" && rm -f \"D:/FRONTEND/weekly-app/.next/dev/lock\")",
+      "Bash(cd D:/FRONTEND/weekly-app && npm install localforage sonner @radix-ui/react-dialog 2>&1 | tail -5)",
+      "Bash(cd D:/FRONTEND/weekly-app && npm run build 2>&1)"
     ]
   }
 }
