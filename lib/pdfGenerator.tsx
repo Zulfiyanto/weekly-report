@@ -28,7 +28,29 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: TEXT_MID,
     backgroundColor: WHITE,
-    paddingBottom: 64,
+    paddingTop: 0,        // header handles top padding on page 1
+    paddingBottom: 64,    // space for absolute footer
+  },
+
+  // ── Continuation header (page 2+) ───────────────────────────────────────────
+  pageHeader: {
+    backgroundColor: BLUE,
+    paddingVertical: 10,
+    paddingHorizontal: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  pageHeaderTitle: {
+    fontSize: 10,
+    fontWeight: 700,
+    color: WHITE,
+    letterSpacing: 2,
+  },
+  pageHeaderSub: {
+    fontSize: 8,
+    color: "#bfdbfe",
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────
@@ -222,9 +244,25 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={styles.page} wrap>
 
-        {/* ── Header ── */}
+        {/* ── Continuation header — only shows on page 2+ ── */}
+        <View
+          fixed
+          style={styles.pageHeader}
+          render={({ pageNumber }) =>
+            pageNumber > 1 ? (
+              <>
+                <Text style={styles.pageHeaderTitle}>WEEKLY REPORT</Text>
+                <Text style={styles.pageHeaderSub}>
+                  {nama} · {periodeLabel}
+                </Text>
+              </>
+            ) : null
+          }
+        />
+
+        {/* ── Header (page 1 only) ── */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.headerTitle}>WEEKLY REPORT</Text>
@@ -252,8 +290,8 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
         </View>
 
         {/* ── Ringkasan Pekerjaan ── */}
-        <View style={styles.sectionWrapper}>
-          <View style={styles.sectionHeader}>
+        <View style={styles.sectionWrapper} wrap>
+          <View style={styles.sectionHeader} wrap={false}>
             <View style={styles.sectionAccent} />
             <Text style={styles.sectionTitle}>RINGKASAN PEKERJAAN</Text>
           </View>
@@ -262,7 +300,7 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items }: PDFD
             <Text style={styles.emptyText}>Tidak ada pekerjaan yang dicatat.</Text>
           ) : (
             items.map((item, idx) => (
-              <View key={item.id} style={styles.workItemBlock}>
+              <View key={item.id} style={styles.workItemBlock} wrap>
                 {/* Text block — keep badge + title + description together, no mid-text splits */}
                 <View style={styles.workItemRow} wrap={false}>
                   <View style={styles.workItemBadge}>
