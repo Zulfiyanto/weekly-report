@@ -37,7 +37,17 @@ import {
   ListChecks,
   Loader2,
   AlertCircle,
+  ClipboardList,
+  Copy,
+  Check,
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/ui/dialog"
 import { toast } from "sonner"
 
 function generateId(): string {
@@ -61,6 +71,9 @@ export default function ReportForm() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [previewData, setPreviewData] = useState<PDFDocProps | null>(null)
+  const [copyModalOpen, setCopyModalOpen] = useState(false)
+  const [generatedText, setGeneratedText] = useState("")
+  const [copied, setCopied] = useState(false)
   const [isClient, setIsClient] = useState(false)
 
   const form = useForm<ReportFormValues>({
@@ -263,6 +276,34 @@ export default function ReportForm() {
     handleGenerateRef.current = handleGenerate
   }, [handleGenerate])
 
+  // ── Generate plain-text summary ────────────────────────────────────────────
+  const handleGenerateText = useCallback(() => {
+    const filledItems = items.filter((i) => i.description.trim())
+    if (filledItems.length === 0) {
+      toast.error("Tambahkan setidaknya satu item pekerjaan")
+      return
+    }
+
+    const lines: string[] = []
+
+    filledItems.forEach((item, idx) => {
+      lines.push(`${idx + 1}. ${item.title || "(Tanpa Judul)"}`)
+      item.description.split("\n").forEach((line) => lines.push(`   ${line}`))
+      if (idx < filledItems.length - 1) lines.push("")
+    })
+
+    setGeneratedText(lines.join("\n").trimEnd())
+    setCopied(false)
+    setCopyModalOpen(true)
+  }, [items, tags])
+
+  const handleCopyText = async () => {
+    await navigator.clipboard.writeText(generatedText)
+    setCopied(true)
+    toast.success("Teks berhasil disalin!")
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <>
@@ -395,28 +436,41 @@ export default function ReportForm() {
         </div>
 
         {/* ── Action Buttons ── */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={handlePreview}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white py-4 text-blue-700 font-semibold text-sm hover:bg-blue-50 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-          >
-            <Eye className="h-4.5 w-4.5" />
-            Preview PDF
-          </button>
+        <div className="space-y-2.5">
+          {/* PDF actions */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handlePreview}
+              disabled={isGenerating}
+              className="flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white py-4 text-blue-700 font-semibold text-sm hover:bg-blue-50 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            >
+              <Eye className="h-4 w-4" />
+              Preview PDF
+            </button>
 
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-700 py-4 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+            >
+              {isGenerating ? (
+                <><Loader2 className="h-4 w-4 animate-spin" />Generating...</>
+              ) : (
+                <><FileText className="h-4 w-4" />Generate PDF</>
+              )}
+            </button>
+          </div>
+
+          {/* Copy plain text */}
           <button
             type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="flex items-center justify-center gap-2 rounded-xl bg-blue-700 py-4 text-white font-semibold text-sm shadow-lg hover:bg-blue-800 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-150"
+            onClick={handleGenerateText}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 shadow-sm transition-all"
           >
-            {isGenerating ? (
-              <><Loader2 className="h-4 w-4 animate-spin" />Generating...</>
-            ) : (
-              <><FileText className="h-4 w-4" />Generate PDF</>
-            )}
+            <ClipboardList className="h-4 w-4" />
+            Salin Ringkasan Teks
           </button>
         </div>
 
@@ -435,6 +489,54 @@ export default function ReportForm() {
           isDownloading={isGenerating}
         />
       )}
+
+      {/* ── Copy Text Modal ── */}
+      <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <ClipboardList className="h-4 w-4 text-blue-600" />
+              Ringkasan Teks
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="relative">
+            <textarea
+              readOnly
+              value={generatedText}
+              className="w-full h-64 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs font-mono leading-relaxed text-gray-700 resize-none outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+            />
+            <p className="mt-1 text-[10px] text-gray-400">Klik teks di atas untuk pilih semua</p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <DialogClose asChild>
+              <button
+                type="button"
+                className="px-4 py-2 text-sm rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Tutup
+              </button>
+            </DialogClose>
+            <button
+              type="button"
+              onClick={handleCopyText}
+              className={`flex items-center gap-2 px-4 py-2 text-sm rounded-lg font-semibold transition-all ${
+                copied
+                  ? "bg-green-600 text-white"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
+            >
+              {copied ? (
+                <><Check className="h-4 w-4" />Tersalin!</>
+              ) : (
+                <><Copy className="h-4 w-4" />Salin Semua</>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
