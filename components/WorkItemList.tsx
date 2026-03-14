@@ -29,29 +29,24 @@ function ItemImages({
   onKeysChange: (keys: string[]) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const pasteZoneRef = useRef<HTMLDivElement>(null)
   const [previews, setPreviews] = useState<string[]>([])
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [pasteActive, setPasteActive] = useState(false)
 
-  // Load preview URLs whenever imageKeys change
   useEffect(() => {
-    if (item.imageKeys.length === 0) {
-      setPreviews([])
-      return
-    }
+    if (item.imageKeys.length === 0) { setPreviews([]); return }
     loadImages(item.imageKeys).then(setPreviews)
   }, [item.imageKeys])
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
+  const processFiles = async (files: File[]) => {
+    if (files.length === 0) return
     const remaining = MAX_IMAGES_PER_ITEM - item.imageKeys.length
-    if (remaining <= 0) {
-      toast.error(`Maksimal ${MAX_IMAGES_PER_ITEM} gambar per item`)
-      return
-    }
+    if (remaining <= 0) { toast.error(`Maksimal ${MAX_IMAGES_PER_ITEM} gambar per item`); return }
     setUploading(true)
     const newKeys: string[] = []
-    for (const file of Array.from(files).slice(0, remaining)) {
+    for (const file of files.slice(0, remaining)) {
       try {
         const key = await storeImage(file, item.imageKeys.length + newKeys.length)
         newKeys.push(key)
@@ -63,6 +58,34 @@ function ItemImages({
     setUploading(false)
     if (inputRef.current) inputRef.current.value = ""
   }
+
+  const handleFileInput = (files: FileList | null) => {
+    if (files) processFiles(Array.from(files))
+  }
+
+  // ── Paste handler ───────────────────────────────────────────────────────────
+  const handlePaste = (e: React.ClipboardEvent | ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    const imageFiles = Array.from(items)
+      .filter((it) => it.type.startsWith("image/"))
+      .map((it) => it.getAsFile())
+      .filter((f): f is File => f !== null)
+    if (imageFiles.length > 0) {
+      e.preventDefault()
+      processFiles(imageFiles)
+      toast.success("Screenshot berhasil ditempel!")
+    }
+  }
+
+  // Global paste listener while paste zone is focused
+  useEffect(() => {
+    if (!pasteActive) return
+    const handler = (e: ClipboardEvent) => handlePaste(e)
+    window.addEventListener("paste", handler)
+    return () => window.removeEventListener("paste", handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pasteActive, item.imageKeys])
 
   const removeImage = async (idx: number) => {
     await deleteImage(item.imageKeys[idx])
@@ -84,18 +107,12 @@ function ItemImages({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={src} alt={`Bukti ${idx + 1}`} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setLightbox(src)}
-                  className="rounded-full bg-white/20 p-1 text-white hover:bg-white/40 transition-colors"
-                >
+                <button type="button" onClick={() => setLightbox(src)}
+                  className="rounded-full bg-white/20 p-1 text-white hover:bg-white/40 transition-colors">
                   <ZoomIn className="h-3 w-3" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => removeImage(idx)}
-                  className="rounded-full bg-white/20 p-1 text-white hover:bg-red-500/80 transition-colors"
-                >
+                <button type="button" onClick={() => removeImage(idx)}
+                  className="rounded-full bg-white/20 p-1 text-white hover:bg-red-500/80 transition-colors">
                   <X className="h-3 w-3" />
                 </button>
               </div>
@@ -105,15 +122,11 @@ function ItemImages({
             </div>
           ))}
 
-          {/* Add more button (inline) */}
+          {/* Add more */}
           {count < MAX_IMAGES_PER_ITEM && (
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading}
+            <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading}
               className="h-16 w-16 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-0.5 text-gray-400 hover:border-blue-400 hover:text-blue-400 hover:bg-blue-50 transition-all shrink-0"
-              title="Tambah gambar"
-            >
+              title="Tambah gambar">
               <ImagePlus className="h-4 w-4" />
               <span className="text-[9px]">Tambah</span>
             </button>
@@ -121,38 +134,61 @@ function ItemImages({
         </div>
       )}
 
-      {/* Upload trigger (when no images yet) */}
-      {count === 0 && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="flex items-center gap-1.5 rounded-md border border-dashed border-gray-200 px-2.5 py-1.5 text-xs text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all"
+      {/* Upload + Paste zone */}
+      {count < MAX_IMAGES_PER_ITEM && (
+        <div
+          ref={pasteZoneRef}
+          tabIndex={0}
+          onFocus={() => setPasteActive(true)}
+          onBlur={() => setPasteActive(false)}
+          onPaste={handlePaste}
+          onDrop={(e) => { e.preventDefault(); handleFileInput(e.dataTransfer.files) }}
+          onDragOver={(e) => e.preventDefault()}
+          className={`flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs transition-all cursor-default outline-none
+            ${pasteActive
+              ? "border-blue-400 bg-blue-50 text-blue-600 ring-2 ring-blue-200"
+              : "border-gray-200 text-gray-400 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/50"
+            }`}
         >
           {uploading ? (
-            <span className="h-3 w-3 rounded-full border-2 border-gray-400 border-t-transparent animate-spin" />
+            <>
+              <span className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin shrink-0" />
+              <span>Mengupload...</span>
+            </>
           ) : (
-            <ImagePlus className="h-3 w-3" />
+            <>
+              <ImagePlus className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                <button type="button" onClick={() => inputRef.current?.click()}
+                  className="underline underline-offset-2 hover:text-blue-600">
+                  Pilih file
+                </button>
+                {" · "}
+                <button type="button" onClick={() => { pasteZoneRef.current?.focus() }}
+                  className="underline underline-offset-2 hover:text-blue-600">
+                  Klik sini lalu Ctrl+V
+                </button>
+                {" untuk paste screenshot"}
+              </span>
+            </>
           )}
-          {uploading ? "Mengupload..." : "Tambah bukti gambar"}
-        </button>
+        </div>
       )}
 
-      {/* Counter */}
+      {/* Counter + hint when active */}
       {count > 0 && (
         <p className="text-[10px] text-gray-400">
           {count}/{MAX_IMAGES_PER_ITEM} gambar · {getTotalSizeLabel(previews)}
         </p>
       )}
+      {pasteActive && count < MAX_IMAGES_PER_ITEM && (
+        <p className="text-[10px] text-blue-500 font-medium animate-pulse">
+          ✓ Siap menerima paste — tekan Ctrl+V sekarang
+        </p>
+      )}
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/jpg,image/webp"
-        multiple
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
+      <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/jpg,image/webp"
+        multiple className="hidden" onChange={(e) => handleFileInput(e.target.files)} />
 
       {/* Lightbox */}
       {lightbox && (
