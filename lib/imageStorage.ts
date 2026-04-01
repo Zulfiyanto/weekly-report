@@ -1,6 +1,6 @@
-const MAX_WIDTH = 800
-const QUALITY = 0.8
-const MAX_FILE_BYTES = 2 * 1024 * 1024 // 2MB
+const MAX_WIDTH = 2480 // A4 @ 300 DPI full-width for high-res print
+const QUALITY = 0.92
+const MAX_FILE_BYTES = 8 * 1024 * 1024 // 8MB (dinaikkan untuk gambar resolusi tinggi)
 const MAX_IMAGES = 10
 const KEY_PREFIX = "wr_img_"
 
