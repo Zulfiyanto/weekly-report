@@ -31,7 +31,10 @@
       "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx next build 2>&1 | tail -20)",
       "Bash(cd \"D:\\\\FRONTEND\\\\weekly-app\" && npx tsc --noEmit 2>&1)",
       "Bash(mkdir -p \"D:\\\\FRONTEND\\\\weekly-app\\\\public\\\\fonts\" && curl -sL -o \"D:\\\\FRONTEND\\\\weekly-app\\\\public\\\\fonts\\\\Roboto-Regular.ttf\" \"https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.ttf\" && curl -sL -o \"D:\\\\FRONTEND\\\\weekly-app\\\\public\\\\fonts\\\\Roboto-Medium.ttf\" \"https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmEU9vAw.ttf\" && curl -sL -o \"D:\\\\FRONTEND\\\\weekly-app\\\\public\\\\fonts\\\\Roboto-Bold.ttf\" \"https://fonts.gstatic.com/s/roboto/v30/KFOlCnqEu92Fr1MmWUlfBBc9.ttf\" && curl -sL -o \"D:\\\\FRONTEND\\\\weekly-app\\\\public\\\\fonts\\\\Roboto-Italic.ttf\" \"https://fonts.gstatic.com/s/roboto/v30/KFOkCnqEu92Fr1Mu51xIIzc.ttf\" && echo \"Done\")",
-      "Bash(grep -r \"MAX_WIDTH\\\\|QUALITY\\\\|DPI\\\\|resolution\\\\|compress\\\\|scale\" D:FRONTENDweekly-app/lib D:FRONTENDweekly-app/components D:FRONTENDweekly-app/app --include=*.ts --include=*.tsx --include=*.js)"
+      "Bash(grep -r \"MAX_WIDTH\\\\|QUALITY\\\\|DPI\\\\|resolution\\\\|compress\\\\|scale\" D:FRONTENDweekly-app/lib D:FRONTENDweekly-app/components D:FRONTENDweekly-app/app --include=*.ts --include=*.tsx --include=*.js)",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Skill(claude-api)"
     ]
   }
 }

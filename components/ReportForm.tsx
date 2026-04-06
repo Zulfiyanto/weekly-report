@@ -15,7 +15,10 @@ import {
   loadTags,
   addTag,
   deleteTag,
+  loadThemeId,
+  saveThemeId,
 } from "@/lib/storage"
+import { DEFAULT_THEME, getThemeById, type PdfTheme } from "@/lib/pdfThemes"
 import { deleteImages, loadImages } from "@/lib/imageStorage"
 import type { PDFWorkItem } from "@/lib/pdfGenerator"
 import { generatePDF, getPDFFileName, type PDFDocProps } from "@/lib/pdfGenerator"
@@ -40,7 +43,9 @@ import {
   ClipboardList,
   Copy,
   Check,
+  Palette,
 } from "lucide-react"
+import { PDF_THEMES } from "@/lib/pdfThemes"
 import {
   Dialog,
   DialogContent,
@@ -68,6 +73,7 @@ export default function ReportForm() {
   const [templates, setTemplates] = useState<WorkTemplate[]>([])
   const [history, setHistory] = useState<ReportHistory[]>([])
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
+  const [selectedTheme, setSelectedTheme] = useState<PdfTheme>(DEFAULT_THEME)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [previewData, setPreviewData] = useState<PDFDocProps | null>(null)
@@ -103,6 +109,8 @@ export default function ReportForm() {
     setTags(loadTags())
     setTemplates(loadTemplates())
     setHistory(loadHistory())
+    const savedThemeId = loadThemeId()
+    if (savedThemeId) setSelectedTheme(getThemeById(savedThemeId))
   }, [setValue])
 
   // ── Auto-save draft (1s debounce) ─────────────────────────────────────────
@@ -183,6 +191,12 @@ export default function ReportForm() {
     toast.success("Template disimpan")
   }
 
+  // ── Theme handler ──────────────────────────────────────────────────────────
+  const handleThemeChange = useCallback((theme: PdfTheme) => {
+    setSelectedTheme(theme)
+    saveThemeId(theme.id)
+  }, [])
+
   // ── Build PDF data ─────────────────────────────────────────────────────────
   const buildPDFData = useCallback(
     async (values: ReportFormValues): Promise<PDFDocProps | null> => {
@@ -213,9 +227,10 @@ export default function ReportForm() {
         periodeAwal: values.periodeAwal,
         periodeAkhir: values.periodeAkhir,
         items: pdfItems,
+        theme: selectedTheme,
       }
     },
-    [items]
+    [items, selectedTheme]
   )
 
   // ── Preview PDF ────────────────────────────────────────────────────────────
@@ -437,6 +452,45 @@ export default function ReportForm() {
 
         {/* ── Action Buttons ── */}
         <div className="space-y-2.5">
+          {/* Theme picker */}
+          <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Palette className="h-3.5 w-3.5" />
+                Tema PDF
+              </div>
+              <span className="text-xs text-gray-400">{selectedTheme.label}</span>
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              {PDF_THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  type="button"
+                  title={theme.label}
+                  onClick={() => handleThemeChange(theme)}
+                  className="group relative flex flex-1 flex-col items-center gap-1.5 rounded-lg py-2 transition-all hover:bg-gray-50"
+                >
+                  <span
+                    className="h-7 w-7 rounded-full transition-transform group-hover:scale-110"
+                    style={{ backgroundColor: theme.primary }}
+                  >
+                    {selectedTheme.id === theme.id && (
+                      <span
+                        className="flex h-full w-full items-center justify-center rounded-full ring-2 ring-offset-2"
+                        style={{ ringColor: theme.primary } as React.CSSProperties}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-white" />
+                      </span>
+                    )}
+                  </span>
+                  <span className={`text-[10px] font-medium ${selectedTheme.id === theme.id ? "text-gray-800" : "text-gray-400"}`}>
+                    {theme.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* PDF actions */}
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -487,6 +541,8 @@ export default function ReportForm() {
           onClose={() => setIsPreviewing(false)}
           onDownload={() => handleDownload(previewData)}
           isDownloading={isGenerating}
+          selectedTheme={selectedTheme}
+          onThemeChange={handleThemeChange}
         />
       )}
 

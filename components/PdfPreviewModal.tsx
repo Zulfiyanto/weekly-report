@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Download, X, Loader2 } from "lucide-react"
+import { Download, X, Loader2, Palette } from "lucide-react"
 import type { PDFDocProps } from "@/lib/pdfGenerator"
+import { PDF_THEMES, type PdfTheme } from "@/lib/pdfThemes"
 
 interface PdfPreviewModalProps {
   open: boolean
@@ -10,6 +11,8 @@ interface PdfPreviewModalProps {
   onClose: () => void
   onDownload: () => void
   isDownloading: boolean
+  selectedTheme: PdfTheme
+  onThemeChange: (theme: PdfTheme) => void
 }
 
 export default function PdfPreviewModal({
@@ -18,6 +21,8 @@ export default function PdfPreviewModal({
   onClose,
   onDownload,
   isDownloading,
+  selectedTheme,
+  onThemeChange,
 }: PdfPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -33,7 +38,7 @@ export default function PdfPreviewModal({
 
     // Dynamic import to avoid SSR issues with @react-pdf/renderer
     import("@/lib/pdfGenerator")
-      .then(({ generatePDF }) => generatePDF(data))
+      .then(({ generatePDF }) => generatePDF({ ...data, theme: selectedTheme }))
       .then((blob) => {
         url = URL.createObjectURL(blob)
         setBlobUrl(url)
@@ -48,21 +53,49 @@ export default function PdfPreviewModal({
       if (url) URL.revokeObjectURL(url)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+  }, [open, selectedTheme])
 
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/70 backdrop-blur-sm">
       {/* Toolbar */}
-      <div className="flex items-center justify-between bg-gray-900 px-5 py-3 shrink-0">
-        <div>
+      <div className="flex items-center justify-between bg-gray-900 px-5 py-3 shrink-0 gap-4">
+        <div className="min-w-0">
           <h2 className="text-white font-semibold text-sm">Preview PDF</h2>
-          <p className="text-gray-400 text-xs mt-0.5">
+          <p className="text-gray-400 text-xs mt-0.5 truncate">
             {data.nama} — {data.periodeAwal} s/d {data.periodeAkhir}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* Theme Picker */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 text-gray-400 text-xs">
+            <Palette className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Tema:</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {PDF_THEMES.map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                title={theme.label}
+                onClick={() => onThemeChange(theme)}
+                className="relative h-6 w-6 rounded-full transition-transform hover:scale-110 focus:outline-none"
+                style={{ backgroundColor: theme.primary }}
+              >
+                {selectedTheme.id === theme.id && (
+                  <span className="absolute inset-0 rounded-full ring-2 ring-white ring-offset-1 ring-offset-gray-900" />
+                )}
+              </button>
+            ))}
+          </div>
+          <span className="hidden sm:block text-xs text-gray-500 ml-1">
+            {selectedTheme.label}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
           <button
             type="button"
             onClick={onDownload}

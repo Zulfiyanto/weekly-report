@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { WorkItem, WorkTag } from "@/lib/types"
 import { storeImage, deleteImage, loadImages, getTotalSizeLabel } from "@/lib/imageStorage"
-import { Trash2, Sparkles, GripVertical, Plus, BookmarkPlus, ImagePlus, X, ZoomIn } from "lucide-react"
+import { Trash2, Sparkles, GripVertical, Plus, BookmarkPlus, ImagePlus, X, ZoomIn, Tags } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 
@@ -218,6 +218,7 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
   const [showAddTag, setShowAddTag] = useState<string | null>(null) // item id
   const [newTagLabel, setNewTagLabel] = useState("")
   const [newTagColor, setNewTagColor] = useState(TAG_COLORS[5])
+  const [generatingLabelFor, setGeneratingLabelFor] = useState<string | null>(null)
 
   const addItem = () => {
     onChange([...items, { id: generateId(), title: "", description: "", isEnhancing: false, imageKeys: [], tags: [] }])
@@ -265,6 +266,59 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
     }
   }
 
+  const generateLabel = async (id: string) => {
+    const item = items.find((i) => i.id === id)
+    if (!item || (!item.title.trim() && !item.description.trim())) return
+
+    setGeneratingLabelFor(id)
+    try {
+      const res = await fetch("/api/ai-label", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: item.title, description: item.description }),
+        signal: AbortSignal.timeout(15000),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Gagal generate label.")
+
+      const suggestedLabels: string[] = data.labels
+      let updatedTags = [...allTags]
+      const newTagIds: string[] = []
+
+      for (const label of suggestedLabels) {
+        const existing = updatedTags.find((t) => t.label.toLowerCase() === label.toLowerCase())
+        if (existing) {
+          if (!item.tags.includes(existing.id)) newTagIds.push(existing.id)
+        } else {
+          const colorIdx = updatedTags.length % TAG_COLORS.length
+          const newTag: WorkTag = {
+            id: "tag_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+            label,
+            color: TAG_COLORS[colorIdx],
+            isDefault: false,
+          }
+          updatedTags = [...updatedTags, newTag]
+          newTagIds.push(newTag.id)
+        }
+      }
+
+      onTagsChange(updatedTags)
+      const mergedTags = [...new Set([...item.tags, ...newTagIds])]
+      updateItem(id, { tags: mergedTags })
+      toast.success(`${suggestedLabels.length} label berhasil di-generate`)
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.name === "TimeoutError"
+            ? "Request timeout. Coba lagi."
+            : err.message
+          : "Terjadi kesalahan."
+      toast.error(msg)
+    } finally {
+      setGeneratingLabelFor(null)
+    }
+  }
+
   const toggleTag = (itemId: string, tagId: string) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
@@ -309,6 +363,8 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
         const isNearLimit = charCount > MAX_DESC * 0.8
         const isAtLimit = charCount >= MAX_DESC
         const canEnhance = !item.isEnhancing && item.description.trim().length >= 5
+        const isGeneratingLabel = generatingLabelFor === item.id
+        const canGenerateLabel = !isGeneratingLabel && (item.title.trim().length > 0 || item.description.trim().length > 0)
 
         return (
           <div
@@ -376,6 +432,21 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
                     <Sparkles className="h-3 w-3" />
                   )}
                   <span className="hidden sm:inline">{item.isEnhancing ? "Proses" : "Rapikan"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => generateLabel(item.id)}
+                  disabled={!canGenerateLabel}
+                  title="Generate label dengan AI"
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  {isGeneratingLabel ? (
+                    <span className="h-3 w-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  ) : (
+                    <Tags className="h-3 w-3" />
+                  )}
+                  <span className="hidden sm:inline">{isGeneratingLabel ? "Proses" : "Label"}</span>
                 </button>
 
                 <button
