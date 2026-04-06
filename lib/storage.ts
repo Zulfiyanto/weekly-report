@@ -5,6 +5,7 @@ const HISTORY_KEY = "weekly_report_history"
 const TEMPLATES_KEY = "weekly_report_templates"
 const TAGS_KEY = "weekly_report_tags"
 const THEME_KEY = "weekly_report_theme"
+const CUSTOM_COLOR_KEY = "weekly_report_custom_color"
 
 export const DEFAULT_TAGS: WorkTag[] = [
   { id: "tag_backend",   label: "Backend",      color: "#3b82f6", isDefault: true },
@@ -208,6 +209,16 @@ export function loadThemeId(): string | null {
 export function saveThemeId(id: string): void {
   if (typeof window === "undefined") return
   localStorage.setItem(THEME_KEY, id)
+}
+
+export function loadCustomColor(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(CUSTOM_COLOR_KEY)
+}
+
+export function saveCustomColor(hex: string): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(CUSTOM_COLOR_KEY, hex)
 }
 
 // Re-export types for convenience

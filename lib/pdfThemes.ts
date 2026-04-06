@@ -55,3 +55,26 @@ export const DEFAULT_THEME = PDF_THEMES[0]
 export function getThemeById(id: string): PdfTheme {
   return PDF_THEMES.find((t) => t.id === id) ?? DEFAULT_THEME
 }
+
+// ─── Custom theme builder ─────────────────────────────────────────────────────
+
+function mixWithWhite(hex: string, ratio: number): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  const nr = Math.round(r + (255 - r) * ratio)
+  const ng = Math.round(g + (255 - g) * ratio)
+  const nb = Math.round(b + (255 - b) * ratio)
+  return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb.toString(16).padStart(2, "0")}`
+}
+
+export function buildCustomTheme(hex: string): PdfTheme {
+  return {
+    id: "custom",
+    label: "Kustom",
+    primary: hex,
+    primaryLight: mixWithWhite(hex, 0.92),
+    primaryMid: mixWithWhite(hex, 0.80),
+    accentText: mixWithWhite(hex, 0.55),
+  }
+}

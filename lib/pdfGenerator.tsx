@@ -30,7 +30,8 @@ const WHITE = "#ffffff"
 const stylesCache = new Map<string, ReturnType<typeof StyleSheet.create>>()
 
 function makeStyles(theme: PdfTheme) {
-  if (stylesCache.has(theme.id)) return stylesCache.get(theme.id)!
+  const cacheKey = `${theme.id}:${theme.primary}`
+  if (stylesCache.has(cacheKey)) return stylesCache.get(cacheKey)!
 
   const s = StyleSheet.create({
     page: {
@@ -222,7 +223,7 @@ function makeStyles(theme: PdfTheme) {
     footerPage: { fontSize: 8, color: TEXT_MUTED },
   })
 
-  stylesCache.set(theme.id, s)
+  stylesCache.set(cacheKey, s)
   return s
 }
 

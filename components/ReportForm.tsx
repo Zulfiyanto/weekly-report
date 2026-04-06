@@ -17,8 +17,10 @@ import {
   deleteTag,
   loadThemeId,
   saveThemeId,
+  loadCustomColor,
+  saveCustomColor,
 } from "@/lib/storage"
-import { DEFAULT_THEME, getThemeById, type PdfTheme } from "@/lib/pdfThemes"
+import { DEFAULT_THEME, getThemeById, buildCustomTheme, type PdfTheme } from "@/lib/pdfThemes"
 import { deleteImages, loadImages } from "@/lib/imageStorage"
 import type { PDFWorkItem } from "@/lib/pdfGenerator"
 import { generatePDF, getPDFFileName, type PDFDocProps } from "@/lib/pdfGenerator"
@@ -74,6 +76,7 @@ export default function ReportForm() {
   const [history, setHistory] = useState<ReportHistory[]>([])
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<PdfTheme>(DEFAULT_THEME)
+  const [customColor, setCustomColor] = useState<string>("#6366f1")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
   const [previewData, setPreviewData] = useState<PDFDocProps | null>(null)
@@ -109,8 +112,14 @@ export default function ReportForm() {
     setTags(loadTags())
     setTemplates(loadTemplates())
     setHistory(loadHistory())
+    const savedColor = loadCustomColor()
+    if (savedColor) setCustomColor(savedColor)
     const savedThemeId = loadThemeId()
-    if (savedThemeId) setSelectedTheme(getThemeById(savedThemeId))
+    if (savedThemeId === "custom" && savedColor) {
+      setSelectedTheme(buildCustomTheme(savedColor))
+    } else if (savedThemeId) {
+      setSelectedTheme(getThemeById(savedThemeId))
+    }
   }, [setValue])
 
   // ── Auto-save draft (1s debounce) ─────────────────────────────────────────
@@ -195,6 +204,14 @@ export default function ReportForm() {
   const handleThemeChange = useCallback((theme: PdfTheme) => {
     setSelectedTheme(theme)
     saveThemeId(theme.id)
+  }, [])
+
+  const handleCustomColorChange = useCallback((hex: string) => {
+    setCustomColor(hex)
+    saveCustomColor(hex)
+    const theme = buildCustomTheme(hex)
+    setSelectedTheme(theme)
+    saveThemeId("custom")
   }, [])
 
   // ── Build PDF data ─────────────────────────────────────────────────────────
@@ -488,6 +505,31 @@ export default function ReportForm() {
                   </span>
                 </button>
               ))}
+              {/* Custom color button */}
+              <label
+                title="Warna kustom"
+                className="group relative flex flex-1 cursor-pointer flex-col items-center gap-1.5 rounded-lg py-2 transition-all hover:bg-gray-50"
+              >
+                <span
+                  className="relative h-7 w-7 rounded-full transition-transform group-hover:scale-110 overflow-hidden border-2 border-dashed border-gray-300"
+                  style={{ backgroundColor: customColor }}
+                >
+                  {selectedTheme.id === "custom" && (
+                    <span className="flex h-full w-full items-center justify-center rounded-full ring-2 ring-offset-2">
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                    </span>
+                  )}
+                </span>
+                <span className={`text-[10px] font-medium ${selectedTheme.id === "custom" ? "text-gray-800" : "text-gray-400"}`}>
+                  Kustom
+                </span>
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => handleCustomColorChange(e.target.value)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
             </div>
           </div>
 
@@ -543,6 +585,8 @@ export default function ReportForm() {
           isDownloading={isGenerating}
           selectedTheme={selectedTheme}
           onThemeChange={handleThemeChange}
+          customColor={customColor}
+          onCustomColorChange={handleCustomColorChange}
         />
       )}
 

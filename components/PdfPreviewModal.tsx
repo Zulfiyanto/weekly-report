@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Download, X, Loader2, Palette } from "lucide-react"
 import type { PDFDocProps } from "@/lib/pdfGenerator"
-import { PDF_THEMES, type PdfTheme } from "@/lib/pdfThemes"
+import { PDF_THEMES, buildCustomTheme, type PdfTheme } from "@/lib/pdfThemes"
 
 interface PdfPreviewModalProps {
   open: boolean
@@ -13,6 +13,8 @@ interface PdfPreviewModalProps {
   isDownloading: boolean
   selectedTheme: PdfTheme
   onThemeChange: (theme: PdfTheme) => void
+  customColor: string
+  onCustomColorChange: (hex: string) => void
 }
 
 export default function PdfPreviewModal({
@@ -23,6 +25,8 @@ export default function PdfPreviewModal({
   isDownloading,
   selectedTheme,
   onThemeChange,
+  customColor,
+  onCustomColorChange,
 }: PdfPreviewModalProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -89,6 +93,25 @@ export default function PdfPreviewModal({
                 )}
               </button>
             ))}
+            {/* Custom color picker */}
+            <label
+              title="Warna kustom"
+              className="relative h-6 w-6 cursor-pointer rounded-full transition-transform hover:scale-110 border-2 border-dashed border-gray-500 overflow-hidden"
+              style={{ backgroundColor: customColor }}
+            >
+              {selectedTheme.id === "custom" && (
+                <span className="absolute inset-0 rounded-full ring-2 ring-white ring-offset-1 ring-offset-gray-900" />
+              )}
+              <input
+                type="color"
+                value={customColor}
+                onChange={(e) => {
+                  onCustomColorChange(e.target.value)
+                  onThemeChange(buildCustomTheme(e.target.value))
+                }}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </label>
           </div>
           <span className="hidden sm:block text-xs text-gray-500 ml-1">
             {selectedTheme.label}
