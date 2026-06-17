@@ -30,6 +30,8 @@ import HistoryPanel from "./HistoryPanel"
 import TemplateChips from "./TemplateChips"
 import DraftIndicator from "./DraftIndicator"
 import PdfPreviewModal from "./PdfPreviewModal"
+import GitlabSettings from "./GitlabSettings"
+import GitlabImportModal from "./GitlabImportModal"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -46,6 +48,8 @@ import {
   Copy,
   Check,
   Palette,
+  GitlabIcon,
+  Settings,
 } from "lucide-react"
 import { PDF_THEMES } from "@/lib/pdfThemes"
 import {
@@ -84,6 +88,8 @@ export default function ReportForm() {
   const [generatedText, setGeneratedText] = useState("")
   const [copied, setCopied] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [gitlabImportOpen, setGitlabImportOpen] = useState(false)
+  const [gitlabSettingsOpen, setGitlabSettingsOpen] = useState(false)
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -176,11 +182,11 @@ export default function ReportForm() {
   // ── Tag handlers ───────────────────────────────────────────────────────────
   const handleTagsChange = (newTags: WorkTag[]) => {
     setTags(newTags)
-    // Persist: find added or removed tag
-    const added = newTags.find((t) => !tags.find((e) => e.id === t.id))
-    const removed = tags.find((t) => !newTags.find((e) => e.id === t.id))
-    if (added) addTag(added)
-    if (removed) deleteTag(removed.id)
+    // Persist: handle multiple added/removed tags (e.g. AI label & GitLab import)
+    const added = newTags.filter((t) => !tags.find((e) => e.id === t.id))
+    const removed = tags.filter((t) => !newTags.find((e) => e.id === t.id))
+    added.forEach((t) => addTag(t))
+    removed.forEach((t) => deleteTag(t.id))
   }
 
   // ── Template handlers ──────────────────────────────────────────────────────
@@ -199,6 +205,17 @@ export default function ReportForm() {
     setTemplates(loadTemplates())
     toast.success("Template disimpan")
   }
+
+  // ── GitLab import handler ──────────────────────────────────────────────────
+  const handleGitlabImport = useCallback((newItems: WorkItem[]) => {
+    if (newItems.length === 0) return
+    setItems((prev) => {
+      // Drop the initial empty default item if it's the only thing present
+      const onlyEmptyDefault =
+        prev.length === 1 && !prev[0].title.trim() && !prev[0].description.trim() && prev[0].imageKeys.length === 0
+      return onlyEmptyDefault ? newItems : [...prev, ...newItems]
+    })
+  }, [])
 
   // ── Theme handler ──────────────────────────────────────────────────────────
   const handleThemeChange = useCallback((theme: PdfTheme) => {
@@ -568,6 +585,26 @@ export default function ReportForm() {
             <ClipboardList className="h-4 w-4" />
             Salin Ringkasan Teks
           </button>
+
+          {/* Import from GitLab */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setGitlabImportOpen(true)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-white py-3 text-sm font-medium text-orange-700 hover:bg-orange-50 shadow-sm transition-all"
+            >
+              <GitlabIcon className="h-4 w-4" />
+              Import dari GitLab
+            </button>
+            <button
+              type="button"
+              onClick={() => setGitlabSettingsOpen(true)}
+              title="Pengaturan koneksi GitLab"
+              className="flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm transition-all"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* ── History ── */}
@@ -589,6 +626,22 @@ export default function ReportForm() {
           onCustomColorChange={handleCustomColorChange}
         />
       )}
+
+      {/* ── GitLab Modals ── */}
+      <GitlabImportModal
+        open={gitlabImportOpen}
+        onClose={() => setGitlabImportOpen(false)}
+        periodeAwal={watchedValues.periodeAwal}
+        periodeAkhir={watchedValues.periodeAkhir}
+        allTags={tags}
+        onTagsChange={handleTagsChange}
+        onImport={handleGitlabImport}
+        onOpenSettings={() => setGitlabSettingsOpen(true)}
+      />
+      <GitlabSettings
+        open={gitlabSettingsOpen}
+        onClose={() => setGitlabSettingsOpen(false)}
+      />
 
       {/* ── Copy Text Modal ── */}
       <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>

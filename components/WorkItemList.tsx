@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { WorkItem, WorkTag } from "@/lib/types"
 import { storeImage, deleteImage, loadImages, getTotalSizeLabel } from "@/lib/imageStorage"
+import { TAG_COLORS, generateTagId, resolveLabelsToTags } from "@/lib/tags"
 import { Trash2, Sparkles, GripVertical, Plus, BookmarkPlus, ImagePlus, X, ZoomIn, Tags } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
@@ -10,11 +11,6 @@ import { toast } from "sonner"
 const MAX_DESC = 500
 const MAX_TITLE = 80
 const MAX_IMAGES_PER_ITEM = 5
-
-const TAG_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#6b7280",
-]
 
 interface WorkItemListProps {
   items: WorkItem[]
@@ -282,25 +278,7 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
       if (!res.ok) throw new Error(data.error || "Gagal generate label.")
 
       const suggestedLabels: string[] = data.labels
-      let updatedTags = [...allTags]
-      const newTagIds: string[] = []
-
-      for (const label of suggestedLabels) {
-        const existing = updatedTags.find((t) => t.label.toLowerCase() === label.toLowerCase())
-        if (existing) {
-          if (!item.tags.includes(existing.id)) newTagIds.push(existing.id)
-        } else {
-          const colorIdx = updatedTags.length % TAG_COLORS.length
-          const newTag: WorkTag = {
-            id: "tag_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
-            label,
-            color: TAG_COLORS[colorIdx],
-            isDefault: false,
-          }
-          updatedTags = [...updatedTags, newTag]
-          newTagIds.push(newTag.id)
-        }
-      }
+      const { tags: updatedTags, tagIds: newTagIds } = resolveLabelsToTags(suggestedLabels, allTags)
 
       onTagsChange(updatedTags)
       const mergedTags = [...new Set([...item.tags, ...newTagIds])]
@@ -332,7 +310,7 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
     const label = newTagLabel.trim()
     if (!label) return
     const newTag: WorkTag = {
-      id: "tag_" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+      id: generateTagId(),
       label: label.slice(0, 20),
       color: newTagColor,
       isDefault: false,

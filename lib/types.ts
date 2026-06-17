@@ -38,3 +38,19 @@ export interface ReportHistory {
   items: WorkItem[]
   hasImages: boolean
 }
+
+export interface GitlabConfig {
+  url: string      // mis. https://gitlab.kantor.co.id (tanpa trailing slash)
+  token: string    // Personal Access Token (scope: read_api)
+}
+
+export interface GitlabMR {
+  id: number
+  iid: number
+  title: string
+  description: string
+  webUrl: string
+  labels: string[]
+  mergedAt: string
+  projectPath: string  // mis. "tim-x/repo-y"
+}
