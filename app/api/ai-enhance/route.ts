@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
     const prompt = `Kamu adalah asisten untuk menulis laporan kerja mingguan dalam Bahasa Indonesia yang profesional dan formal. Ubah teks berikut menjadi satu kalimat laporan yang jelas dan profesional, tanpa mengubah makna aslinya. Balas hanya dengan kalimat hasil tanpa tambahan apapun.\n\nTeks: ${text.trim()}`
 

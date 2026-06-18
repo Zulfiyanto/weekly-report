@@ -32,6 +32,7 @@ import DraftIndicator from "./DraftIndicator"
 import PdfPreviewModal from "./PdfPreviewModal"
 import GitlabSettings from "./GitlabSettings"
 import GitlabImportModal from "./GitlabImportModal"
+import MrPasteModal from "./MrPasteModal"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,6 +51,7 @@ import {
   Palette,
   GitlabIcon,
   Settings,
+  ClipboardPaste,
 } from "lucide-react"
 import { PDF_THEMES } from "@/lib/pdfThemes"
 import {
@@ -90,6 +92,7 @@ export default function ReportForm() {
   const [isClient, setIsClient] = useState(false)
   const [gitlabImportOpen, setGitlabImportOpen] = useState(false)
   const [gitlabSettingsOpen, setGitlabSettingsOpen] = useState(false)
+  const [mrPasteOpen, setMrPasteOpen] = useState(false)
 
   const form = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
@@ -586,6 +589,16 @@ export default function ReportForm() {
             Salin Ringkasan Teks
           </button>
 
+          {/* Paste from Merge Request */}
+          <button
+            type="button"
+            onClick={() => setMrPasteOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white py-3 text-sm font-medium text-blue-700 hover:bg-blue-50 shadow-sm transition-all"
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            Tempel dari Merge Request
+          </button>
+
           {/* Import from GitLab */}
           <div className="flex gap-2">
             <button
@@ -641,6 +654,13 @@ export default function ReportForm() {
       <GitlabSettings
         open={gitlabSettingsOpen}
         onClose={() => setGitlabSettingsOpen(false)}
+      />
+      <MrPasteModal
+        open={mrPasteOpen}
+        onClose={() => setMrPasteOpen(false)}
+        allTags={tags}
+        onTagsChange={handleTagsChange}
+        onImport={handleGitlabImport}
       />
 
       {/* ── Copy Text Modal ── */}
