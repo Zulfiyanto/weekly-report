@@ -1,8 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import type { WorkItem, WorkTag, GitlabMR } from "@/lib/types"
-import { loadGitlabConfig } from "@/lib/storage"
+import type { WorkItem, WorkTag, GithubPR } from "@/lib/types"
+import { loadGithubConfig } from "@/lib/storage"
 import { resolveLabelsToTags } from "@/lib/tags"
 import {
   Dialog,
@@ -13,7 +13,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
-  GitlabIcon,
+  Github,
   Loader2,
   Download,
   Sparkles,
@@ -30,7 +30,7 @@ function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-interface GitlabImportModalProps {
+interface GithubImportModalProps {
   open: boolean
   onClose: () => void
   periodeAwal: string
@@ -41,7 +41,7 @@ interface GitlabImportModalProps {
   onOpenSettings: () => void
 }
 
-export default function GitlabImportModal({
+export default function GithubImportModal({
   open,
   onClose,
   periodeAwal,
@@ -50,11 +50,11 @@ export default function GitlabImportModal({
   onTagsChange,
   onImport,
   onOpenSettings,
-}: GitlabImportModalProps) {
+}: GithubImportModalProps) {
   const [hasConfig, setHasConfig] = useState(false)
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
-  const [mrs, setMrs] = useState<GitlabMR[]>([])
+  const [prs, setPrs] = useState<GithubPR[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [aiEnabled, setAiEnabled] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
@@ -65,18 +65,18 @@ export default function GitlabImportModal({
   // ── Reset state on open ──────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return
-    setHasConfig(loadGitlabConfig() !== null)
+    setHasConfig(loadGithubConfig() !== null)
     setDateFrom(periodeAwal || "")
     setDateTo(periodeAkhir || "")
-    setMrs([])
+    setPrs([])
     setSelected(new Set())
     setFetched(false)
     setProgress("")
   }, [open, periodeAwal, periodeAkhir])
 
-  // ── Fetch MRs ────────────────────────────────────────────────────────────
+  // ── Fetch PRs ──────────────────────────────────────────────────────────────
   const handleFetch = async () => {
-    const cfg = loadGitlabConfig()
+    const cfg = loadGithubConfig()
     if (!cfg) {
       setHasConfig(false)
       return
@@ -89,25 +89,25 @@ export default function GitlabImportModal({
     setIsFetching(true)
     setFetched(false)
     try {
-      const res = await fetch("/api/gitlab/merge-requests", {
+      const res = await fetch("/api/github/pull-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: cfg.url, token: cfg.token, dateFrom, dateTo }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Gagal mengambil merge request")
+      if (!res.ok) throw new Error(data.error || "Gagal mengambil pull request")
 
-      const list: GitlabMR[] = data.mergeRequests ?? []
-      setMrs(list)
-      setSelected(new Set(list.map((mr) => mr.id)))
+      const list: GithubPR[] = data.pullRequests ?? []
+      setPrs(list)
+      setSelected(new Set(list.map((pr) => pr.id)))
       setFetched(true)
       if (list.length === 0) {
-        toast.info("Tidak ada MR yang merged dalam periode ini")
+        toast.info("Tidak ada PR yang merged dalam periode ini")
       } else {
-        toast.success(`${list.length} merge request ditemukan`)
+        toast.success(`${list.length} pull request ditemukan`)
       }
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Gagal mengambil merge request")
+      toast.error(err instanceof Error ? err.message : "Gagal mengambil pull request")
     } finally {
       setIsFetching(false)
     }
@@ -135,11 +135,11 @@ export default function GitlabImportModal({
     return data.enhanced as string
   }
 
-  // ── Import selected MRs as work items ──────────────────────────────────────
+  // ── Import selected PRs as work items ──────────────────────────────────────
   const handleImport = async () => {
-    const chosen = mrs.filter((mr) => selected.has(mr.id))
+    const chosen = prs.filter((pr) => selected.has(pr.id))
     if (chosen.length === 0) {
-      toast.error("Pilih setidaknya satu merge request")
+      toast.error("Pilih setidaknya satu pull request")
       return
     }
 
@@ -149,8 +149,8 @@ export default function GitlabImportModal({
 
     try {
       for (let i = 0; i < chosen.length; i++) {
-        const mr = chosen[i]
-        const baseDesc = (mr.description?.trim() || mr.title).slice(0, MAX_DESC)
+        const pr = chosen[i]
+        const baseDesc = (pr.description?.trim() || pr.title).slice(0, MAX_DESC)
         let description = baseDesc
 
         if (aiEnabled && baseDesc.trim().length >= 5) {
@@ -163,12 +163,12 @@ export default function GitlabImportModal({
           }
         }
 
-        const { tags: updatedTags, tagIds } = resolveLabelsToTags(mr.labels, workingTags)
+        const { tags: updatedTags, tagIds } = resolveLabelsToTags(pr.labels, workingTags)
         workingTags = updatedTags
 
         newItems.push({
           id: generateId(),
-          title: mr.title.slice(0, MAX_TITLE),
+          title: pr.title.slice(0, MAX_TITLE),
           description,
           isEnhancing: false,
           imageKeys: [],
@@ -178,7 +178,7 @@ export default function GitlabImportModal({
 
       if (workingTags.length !== allTags.length) onTagsChange(workingTags)
       onImport(newItems)
-      toast.success(`${newItems.length} item berhasil di-import dari GitLab`)
+      toast.success(`${newItems.length} item berhasil di-import dari GitHub`)
       onClose()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal meng-import")
@@ -195,8 +195,8 @@ export default function GitlabImportModal({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
-            <GitlabIcon className="h-4 w-4 text-orange-600" />
-            Import dari GitLab
+            <Github className="h-4 w-4 text-gray-800" />
+            Import dari GitHub
           </DialogTitle>
         </DialogHeader>
 
@@ -204,7 +204,7 @@ export default function GitlabImportModal({
           <div className="flex flex-col items-center gap-3 py-8 text-center">
             <Settings className="h-8 w-8 text-gray-300" />
             <p className="text-sm text-gray-500">
-              Koneksi GitLab belum dikonfigurasi.
+              Koneksi GitHub belum dikonfigurasi.
             </p>
             <button
               type="button"
@@ -215,7 +215,7 @@ export default function GitlabImportModal({
               className="flex items-center gap-1.5 px-4 py-2 text-sm rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
               <Settings className="h-4 w-4" />
-              Buka Pengaturan GitLab
+              Buka Pengaturan GitHub
             </button>
           </div>
         ) : (
@@ -223,11 +223,11 @@ export default function GitlabImportModal({
             {/* Date range */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="gl-from" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Label htmlFor="gh-from" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Merged dari
                 </Label>
                 <Input
-                  id="gl-from"
+                  id="gh-from"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
@@ -235,11 +235,11 @@ export default function GitlabImportModal({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="gl-to" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Label htmlFor="gh-to" className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   Merged sampai
                 </Label>
                 <Input
-                  id="gl-to"
+                  id="gh-to"
                   type="date"
                   value={dateTo}
                   min={dateFrom}
@@ -253,31 +253,31 @@ export default function GitlabImportModal({
               type="button"
               onClick={handleFetch}
               disabled={isFetching}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-orange-200 bg-orange-50 py-2.5 text-sm font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-60 transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-300 bg-gray-50 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-60 transition-colors"
             >
               {isFetching ? (
-                <><Loader2 className="h-4 w-4 animate-spin" />Mengambil MR...</>
+                <><Loader2 className="h-4 w-4 animate-spin" />Mengambil PR...</>
               ) : (
-                <><GitlabIcon className="h-4 w-4" />Ambil Merge Request</>
+                <><Github className="h-4 w-4" />Ambil Pull Request</>
               )}
             </button>
 
-            {/* MR list */}
-            {fetched && mrs.length === 0 && (
+            {/* PR list */}
+            {fetched && prs.length === 0 && (
               <div className="flex flex-col items-center gap-2 py-6 text-center text-gray-400">
                 <Inbox className="h-7 w-7" />
-                <p className="text-sm">Tidak ada MR merged dalam periode ini.</p>
+                <p className="text-sm">Tidak ada PR merged dalam periode ini.</p>
               </div>
             )}
 
-            {mrs.length > 0 && (
+            {prs.length > 0 && (
               <>
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
-                  {mrs.map((mr) => {
-                    const isSel = selected.has(mr.id)
+                  {prs.map((pr) => {
+                    const isSel = selected.has(pr.id)
                     return (
                       <label
-                        key={mr.id}
+                        key={pr.id}
                         className={`flex gap-2.5 rounded-lg border p-3 cursor-pointer transition-colors ${
                           isSel ? "border-blue-300 bg-blue-50/50" : "border-gray-200 hover:bg-gray-50"
                         }`}
@@ -285,27 +285,27 @@ export default function GitlabImportModal({
                         <input
                           type="checkbox"
                           checked={isSel}
-                          onChange={() => toggle(mr.id)}
+                          onChange={() => toggle(pr.id)}
                           className="mt-0.5 h-4 w-4 shrink-0 accent-blue-600"
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-800 leading-snug">{mr.title}</p>
+                          <p className="text-sm font-medium text-gray-800 leading-snug">{pr.title}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
-                            {mr.projectPath && <span className="font-mono">{mr.projectPath}</span>}
-                            <span>· merged {new Date(mr.mergedAt).toLocaleDateString("id-ID")}</span>
+                            {pr.repo && <span className="font-mono">{pr.repo}</span>}
+                            <span>· merged {new Date(pr.mergedAt).toLocaleDateString("id-ID")}</span>
                             <a
-                              href={mr.webUrl}
+                              href={pr.webUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={(e) => e.stopPropagation()}
                               className="inline-flex items-center gap-0.5 text-blue-500 hover:underline"
                             >
-                              !{mr.iid} <ExternalLink className="h-2.5 w-2.5" />
+                              #{pr.number} <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           </div>
-                          {mr.labels.length > 0 && (
+                          {pr.labels.length > 0 && (
                             <div className="mt-1.5 flex flex-wrap gap-1">
-                              {mr.labels.map((l) => (
+                              {pr.labels.map((l) => (
                                 <span
                                   key={l}
                                   className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500"

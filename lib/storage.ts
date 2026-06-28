@@ -1,4 +1,4 @@
-import type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig } from "./types"
+import type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig, GithubConfig } from "./types"
 
 const DRAFT_KEY = "weekly_report_draft"
 const HISTORY_KEY = "weekly_report_history"
@@ -7,6 +7,7 @@ const TAGS_KEY = "weekly_report_tags"
 const THEME_KEY = "weekly_report_theme"
 const CUSTOM_COLOR_KEY = "weekly_report_custom_color"
 const GITLAB_KEY = "weekly_report_gitlab"
+const GITHUB_KEY = "weekly_report_github"
 
 export const DEFAULT_TAGS: WorkTag[] = [
   { id: "tag_backend",   label: "Backend",      color: "#3b82f6", isDefault: true },
@@ -247,5 +248,30 @@ export function clearGitlabConfig(): void {
   localStorage.removeItem(GITLAB_KEY)
 }
 
+// ─── GitHub config ───────────────────────────────────────────────────────────
+
+export function loadGithubConfig(): GithubConfig | null {
+  if (typeof window === "undefined") return null
+  const raw = localStorage.getItem(GITHUB_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as GithubConfig
+    if (!parsed.url || !parsed.token) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+export function saveGithubConfig(cfg: GithubConfig): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(GITHUB_KEY, JSON.stringify(cfg))
+}
+
+export function clearGithubConfig(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(GITHUB_KEY)
+}
+
 // Re-export types for convenience
-export type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig }
+export type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig, GithubConfig }

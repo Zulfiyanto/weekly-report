@@ -5,10 +5,10 @@ import type { WorkItem, WorkTag } from "@/lib/types"
 import { storeImage, deleteImage, loadImages, getTotalSizeLabel } from "@/lib/imageStorage"
 import { TAG_COLORS, generateTagId, resolveLabelsToTags } from "@/lib/tags"
 import { Trash2, Sparkles, GripVertical, Plus, BookmarkPlus, ImagePlus, X, ZoomIn, Tags } from "lucide-react"
-import { Textarea } from "@/components/ui/textarea"
+import DescriptionEditor from "./DescriptionEditor"
 import { toast } from "sonner"
 
-const MAX_DESC = 500
+const MAX_DESC = 2000
 const MAX_TITLE = 80
 const MAX_IMAGES_PER_ITEM = 5
 
@@ -376,16 +376,13 @@ export default function WorkItemList({ items, onChange, onSaveTemplate, allTags,
                   }`}
                 />
 
-                {/* Textarea */}
-                <Textarea
+                {/* Description editor (markdown: lists, code, bold/italic) */}
+                <DescriptionEditor
                   value={item.description}
-                  onChange={(e) =>
-                    updateItem(item.id, { description: e.target.value.slice(0, MAX_DESC) })
-                  }
+                  onChange={(v) => updateItem(item.id, { description: v })}
                   placeholder={`Deskripsikan pekerjaan ${idx + 1}...`}
                   rows={2}
                   maxLength={MAX_DESC}
-                  className="resize-none text-sm border-0 bg-transparent p-0 focus-visible:ring-0 shadow-none placeholder:text-gray-300 leading-relaxed"
                   disabled={item.isEnhancing}
                 />
                 <span className={`text-[10px] tabular-nums float-right ${

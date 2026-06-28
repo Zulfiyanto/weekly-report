@@ -1,5 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai"
 import { NextRequest, NextResponse } from "next/server"
+
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+const GROQ_MODEL = "llama-3.3-70b-versatile"
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.GROQ_API_KEY
     if (!apiKey) {
       return NextResponse.json(
         { error: "API key belum dikonfigurasi" },
@@ -20,44 +22,78 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const systemPrompt =
+      "Kamu adalah asisten untuk menulis laporan kerja mingguan dalam Bahasa Indonesia yang profesional dan formal. Ubah teks dari pengguna menjadi satu kalimat laporan yang jelas dan profesional, tanpa mengubah makna aslinya. Balas hanya dengan kalimat hasil tanpa tambahan apapun, tanda kutip, atau penjelasan."
 
-    const prompt = `Kamu adalah asisten untuk menulis laporan kerja mingguan dalam Bahasa Indonesia yang profesional dan formal. Ubah teks berikut menjadi satu kalimat laporan yang jelas dan profesional, tanpa mengubah makna aslinya. Balas hanya dengan kalimat hasil tanpa tambahan apapun.\n\nTeks: ${text.trim()}`
+    // 15-second timeout via AbortController
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15000)
 
-    // 15-second timeout via Promise.race
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("REQUEST_TIMEOUT")), 15000)
-    )
+    let res: Response
+    try {
+      res = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          temperature: 0.3,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: text.trim() },
+          ],
+        }),
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
 
-    const generate = model.generateContent(prompt)
-    const result = await Promise.race([generate, timeout])
+    if (!res.ok) {
+      const detail = await res.text()
+      console.error("Groq API error:", { status: res.status, detail })
 
-    const enhanced = result.response.text().trim()
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: "Terlalu banyak request. Coba lagi dalam beberapa detik." },
+          { status: 429 }
+        )
+      }
+      return NextResponse.json(
+        { error: "Gagal memproses teks. Silakan coba lagi." },
+        { status: res.status }
+      )
+    }
+
+    const data = await res.json()
+    const enhanced = data?.choices?.[0]?.message?.content?.trim()
+
+    if (!enhanced) {
+      return NextResponse.json(
+        { error: "Tidak ada hasil dari AI. Coba lagi." },
+        { status: 502 }
+      )
+    }
+
     return NextResponse.json({ enhanced })
   } catch (error: unknown) {
+    const isAbort = error instanceof Error && error.name === "AbortError"
     const errMsg = error instanceof Error ? error.message : String(error)
-    const errStatus = (error as { status?: number })?.status
 
-    console.error("AI enhance error:", { message: errMsg, status: errStatus, raw: error })
+    console.error("AI enhance error:", { message: errMsg, raw: error })
 
-    if (errMsg === "REQUEST_TIMEOUT") {
+    if (isAbort) {
       return NextResponse.json(
         { error: "Request timeout (15 detik). Coba lagi." },
         { status: 504 }
       )
     }
-    if (errStatus === 429) {
-      return NextResponse.json(
-        { error: "Terlalu banyak request. Coba lagi dalam beberapa detik." },
-        { status: 429 }
-      )
-    }
 
-    // Return actual error for debugging
     return NextResponse.json(
-      { error: errMsg || "Gagal memproses teks. Silakan coba lagi." },
-      { status: errStatus ?? 500 }
+      { error: "Gagal memproses teks. Silakan coba lagi." },
+      { status: 500 }
     )
   }
 }

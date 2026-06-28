@@ -1,5 +1,6 @@
 const MAX_TITLE = 80
-const MAX_DESC = 500
+const MAX_DESC = 2000
+
 
 export interface ParsedMr {
   title: string

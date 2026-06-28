@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, Image, Font, pdf } from "@react
 import { format } from "date-fns"
 import { id } from "date-fns/locale"
 import { type PdfTheme, DEFAULT_THEME } from "./pdfThemes"
+import { parseMarkdown, type InlineToken } from "./markdown"
 
 // ── Register Roboto font (local — avoids external URL warnings in PDF viewers) ─
 let _fontsRegistered = false
@@ -171,6 +172,43 @@ function makeStyles(theme: PdfTheme) {
       lineHeight: 1.65,
     },
 
+    // ── Markdown blocks ─────────────────────────────────────────────────────────
+    mdHeading1: { fontSize: 11.5, fontWeight: 700, color: TEXT_DARK, marginTop: 4, marginBottom: 2 },
+    mdHeading2: { fontSize: 10.5, fontWeight: 700, color: TEXT_DARK, marginTop: 3, marginBottom: 2 },
+    mdHeading3: { fontSize: 10, fontWeight: 700, color: TEXT_MID, marginTop: 3, marginBottom: 1 },
+    mdParagraph: { fontSize: 10, color: TEXT_MID, lineHeight: 1.65, marginBottom: 2 },
+    mdList: { marginTop: 1, marginBottom: 2 },
+    mdListItem: { flexDirection: "row", marginBottom: 1 },
+    mdBulletMarker: {
+      width: 14,
+      fontSize: 10,
+      color: theme.primary,
+      lineHeight: 1.65,
+      fontWeight: 700,
+    },
+    mdListItemText: { flex: 1, fontSize: 10, color: TEXT_MID, lineHeight: 1.65 },
+    mdBold: { fontWeight: 700, color: TEXT_DARK },
+    mdItalic: { fontStyle: "italic" },
+    mdInlineCode: {
+      fontFamily: "Courier",
+      fontSize: 9,
+      color: "#1f2937",
+      backgroundColor: "#f0f0f0",
+    },
+    mdCodeBlock: {
+      backgroundColor: "#f5f5f5",
+      borderRadius: 4,
+      border: "1pt solid #e0e0e0",
+      padding: 8,
+      marginVertical: 3,
+    },
+    mdCodeText: {
+      fontFamily: "Courier",
+      fontSize: 8.5,
+      color: "#1f2937",
+      lineHeight: 1.5,
+    },
+
     // ── Tags & Title ──────────────────────────────────────────────────────────
     tagsRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 4 },
     tagChip: { borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2, marginRight: 4, marginBottom: 2 },
@@ -225,6 +263,69 @@ function makeStyles(theme: PdfTheme) {
 
   stylesCache.set(cacheKey, s)
   return s
+}
+
+// ── Markdown → PDF renderers ──────────────────────────────────────────────────
+type PdfStyles = ReturnType<typeof makeStyles>
+
+function PdfInline({ tokens, styles }: { tokens: InlineToken[]; styles: PdfStyles }) {
+  return (
+    <>
+      {tokens.map((tk, i) => {
+        if (tk.type === "bold") return <Text key={i} style={styles.mdBold}>{tk.value}</Text>
+        if (tk.type === "italic") return <Text key={i} style={styles.mdItalic}>{tk.value}</Text>
+        if (tk.type === "code") return <Text key={i} style={styles.mdInlineCode}>{tk.value}</Text>
+        return <Text key={i}>{tk.value}</Text>
+      })}
+    </>
+  )
+}
+
+function PdfDescription({ text, styles }: { text: string; styles: PdfStyles }) {
+  const blocks = parseMarkdown(text)
+  return (
+    <View>
+      {blocks.map((block, i) => {
+        if (block.type === "heading") {
+          const hStyle =
+            block.level <= 1 ? styles.mdHeading1 : block.level === 2 ? styles.mdHeading2 : styles.mdHeading3
+          return (
+            <Text key={i} style={hStyle}>
+              <PdfInline tokens={block.content} styles={styles} />
+            </Text>
+          )
+        }
+        if (block.type === "bullet" || block.type === "numbered") {
+          return (
+            <View key={i} style={styles.mdList}>
+              {block.items.map((item, j) => (
+                <View key={j} style={styles.mdListItem}>
+                  <Text style={styles.mdBulletMarker}>
+                    {block.type === "numbered" ? `${j + 1}.` : "•"}
+                  </Text>
+                  <Text style={styles.mdListItemText}>
+                    <PdfInline tokens={item} styles={styles} />
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )
+        }
+        if (block.type === "code") {
+          return (
+            <View key={i} style={styles.mdCodeBlock} wrap={false}>
+              <Text style={styles.mdCodeText}>{block.code}</Text>
+            </View>
+          )
+        }
+        return (
+          <Text key={i} style={styles.mdParagraph}>
+            <PdfInline tokens={block.content} styles={styles} />
+          </Text>
+        )
+      })}
+    </View>
+  )
 }
 
 export interface PDFWorkItem {
@@ -345,7 +446,7 @@ export function WeeklyReportPDF({ nama, periodeAwal, periodeAkhir, items, theme 
                     {item.title ? (
                       <Text style={styles.workItemTitle}>{item.title}</Text>
                     ) : null}
-                    <Text style={styles.workItemText}>{item.description}</Text>
+                    <PdfDescription text={item.description} styles={styles} />
 
                     {item.images.length > 0 && (
                       <View style={styles.itemImagesWrapper}>

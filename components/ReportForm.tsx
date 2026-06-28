@@ -32,6 +32,8 @@ import DraftIndicator from "./DraftIndicator"
 import PdfPreviewModal from "./PdfPreviewModal"
 import GitlabSettings from "./GitlabSettings"
 import GitlabImportModal from "./GitlabImportModal"
+import GithubSettings from "./GithubSettings"
+import GithubImportModal from "./GithubImportModal"
 import MrPasteModal from "./MrPasteModal"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -50,6 +52,7 @@ import {
   Check,
   Palette,
   GitlabIcon,
+  Github,
   Settings,
   ClipboardPaste,
 } from "lucide-react"
@@ -92,6 +95,8 @@ export default function ReportForm() {
   const [isClient, setIsClient] = useState(false)
   const [gitlabImportOpen, setGitlabImportOpen] = useState(false)
   const [gitlabSettingsOpen, setGitlabSettingsOpen] = useState(false)
+  const [githubImportOpen, setGithubImportOpen] = useState(false)
+  const [githubSettingsOpen, setGithubSettingsOpen] = useState(false)
   const [mrPasteOpen, setMrPasteOpen] = useState(false)
 
   const form = useForm<ReportFormValues>({
@@ -618,6 +623,26 @@ export default function ReportForm() {
               <Settings className="h-4 w-4" />
             </button>
           </div>
+
+          {/* Import from GitHub */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setGithubImportOpen(true)}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 shadow-sm transition-all"
+            >
+              <Github className="h-4 w-4" />
+              Import dari GitHub
+            </button>
+            <button
+              type="button"
+              onClick={() => setGithubSettingsOpen(true)}
+              title="Pengaturan koneksi GitHub"
+              className="flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 text-gray-500 hover:bg-gray-50 hover:text-gray-700 shadow-sm transition-all"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* ── History ── */}
@@ -654,6 +679,22 @@ export default function ReportForm() {
       <GitlabSettings
         open={gitlabSettingsOpen}
         onClose={() => setGitlabSettingsOpen(false)}
+      />
+
+      {/* ── GitHub Modals ── */}
+      <GithubImportModal
+        open={githubImportOpen}
+        onClose={() => setGithubImportOpen(false)}
+        periodeAwal={watchedValues.periodeAwal}
+        periodeAkhir={watchedValues.periodeAkhir}
+        allTags={tags}
+        onTagsChange={handleTagsChange}
+        onImport={handleGitlabImport}
+        onOpenSettings={() => setGithubSettingsOpen(true)}
+      />
+      <GithubSettings
+        open={githubSettingsOpen}
+        onClose={() => setGithubSettingsOpen(false)}
       />
       <MrPasteModal
         open={mrPasteOpen}

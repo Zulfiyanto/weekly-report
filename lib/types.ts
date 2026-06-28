@@ -54,3 +54,19 @@ export interface GitlabMR {
   mergedAt: string
   projectPath: string  // mis. "tim-x/repo-y"
 }
+
+export interface GithubConfig {
+  url: string      // API base, mis. https://api.github.com (Enterprise: https://host/api/v3)
+  token: string    // Personal Access Token (scope: repo / read)
+}
+
+export interface GithubPR {
+  id: number
+  number: number
+  title: string
+  description: string
+  webUrl: string
+  labels: string[]
+  mergedAt: string
+  repo: string     // mis. "owner/repo"
+}
