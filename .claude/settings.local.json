@@ -34,7 +34,8 @@
       "Bash(grep -r \"MAX_WIDTH\\\\|QUALITY\\\\|DPI\\\\|resolution\\\\|compress\\\\|scale\" D:FRONTENDweekly-app/lib D:FRONTENDweekly-app/components D:FRONTENDweekly-app/app --include=*.ts --include=*.tsx --include=*.js)",
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
-      "Skill(claude-api)"
+      "Skill(claude-api)",
+      "PowerShell(npx tsc --noEmit)"
     ]
   }
 }

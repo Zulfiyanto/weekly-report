@@ -22,6 +22,7 @@ import {
 } from "@/lib/storage"
 import { DEFAULT_THEME, getThemeById, buildCustomTheme, type PdfTheme } from "@/lib/pdfThemes"
 import { deleteImages, loadImages } from "@/lib/imageStorage"
+import { markdownToPlainText } from "@/lib/markdown"
 import type { PDFWorkItem } from "@/lib/pdfGenerator"
 import { generatePDF, getPDFFileName, type PDFDocProps } from "@/lib/pdfGenerator"
 import type { WorkItem, WorkTag, WorkTemplate, ReportHistory } from "@/lib/types"
@@ -345,7 +346,9 @@ export default function ReportForm() {
 
     filledItems.forEach((item, idx) => {
       lines.push(`${idx + 1}. ${item.title || "(Tanpa Judul)"}`)
-      item.description.split("\n").forEach((line) => lines.push(`   ${line}`))
+      markdownToPlainText(item.description)
+        .split("\n")
+        .forEach((line) => lines.push(`   ${line}`))
       if (idx < filledItems.length - 1) lines.push("")
     })
 

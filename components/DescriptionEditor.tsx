@@ -159,10 +159,22 @@ export default function DescriptionEditor({
         </div>
       )}
 
-      {tab === "write" && hasMarkdown(value) && (
-        <p className="text-[10px] text-gray-400">
-          Format aktif — klik <span className="font-medium text-gray-500">Pratinjau</span> untuk melihat hasilnya.
-        </p>
+      {tab === "write" && (
+        <>
+          {hasMarkdown(value) && (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 p-2.5">
+              <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                Pratinjau
+              </p>
+              <MarkdownPreview text={value} />
+            </div>
+          )}
+          <p className="text-[10px] text-gray-400">
+            Tip: bungkus kata dengan{" "}
+            <code className="rounded bg-gray-100 px-1 font-mono text-gray-600">`backtick`</code> untuk
+            gaya kode (mis. <code className="rounded bg-gray-100 px-1 font-mono text-gray-600">body</code>).
+          </p>
+        </>
       )}
     </div>
   )

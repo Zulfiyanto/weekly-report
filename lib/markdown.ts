@@ -229,6 +229,34 @@ export function autoFormatList(raw: string): string {
   return out.join("\n")
 }
 
+/**
+ * Render markdown to clean, readable plain text (for the "copy summary" feature):
+ * strips inline syntax (** ` *) and heading hashes, keeps "- " / "1. " list
+ * markers so the structure is still readable.
+ */
+export function markdownToPlainText(text: string): string {
+  const inline = (tokens: InlineToken[]) => tokens.map((t) => t.value).join("")
+  const out: string[] = []
+  for (const block of parseMarkdown(text)) {
+    switch (block.type) {
+      case "heading":
+      case "paragraph":
+        out.push(inline(block.content))
+        break
+      case "bullet":
+        block.items.forEach((it) => out.push(`- ${inline(it)}`))
+        break
+      case "numbered":
+        block.items.forEach((it, i) => out.push(`${i + 1}. ${inline(it)}`))
+        break
+      case "code":
+        block.code.split("\n").forEach((l) => out.push(l))
+        break
+    }
+  }
+  return out.join("\n")
+}
+
 /** True when the text uses any supported markdown formatting. */
 export function hasMarkdown(text: string): boolean {
   return (
