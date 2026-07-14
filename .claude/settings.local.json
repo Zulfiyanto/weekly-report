@@ -35,7 +35,13 @@
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
       "Skill(claude-api)",
-      "PowerShell(npx tsc --noEmit)"
+      "PowerShell(npx tsc --noEmit)",
+      "Bash(nslookup qa-oci.ilcs.co.id)",
+      "Bash(nslookup qa-oci.ilcs.co.id 8.8.8.8)",
+      "PowerShell(npm run *)",
+      "PowerShell(npx tsx -e \"import { extractImageRefs, stripImageMarkdown, buildImageCandidates } from './lib/gitlabImages'; const desc = 'Fix bug login\\\\n\\\\n![image]\\(/uploads/abc123def/screenshot1.png\\)\\\\n\\\\nBefore:\\\\n<img src=\\\\\"/uploads/xyz789/before.jpg\\\\\" width=\\\\\"400\\\\\">\\\\n\\\\n![Screenshot with title]\\(/uploads/qqq/pic.png \\\\\"judul\\\\\"\\)\\\\n\\\\n![ext]\\(https://qa-oci.ilcs.co.id/-/project/42/uploads/s3cret/full.png\\)'; console.log\\('refs:', JSON.stringify\\(extractImageRefs\\(desc\\), null, 1\\)\\); console.log\\('stripped:', JSON.stringify\\(stripImageMarkdown\\(desc\\)\\)\\); console.log\\('candidates:', JSON.stringify\\(buildImageCandidates\\('/uploads/abc123def/screenshot1.png', 'http://qa-oci.ilcs.co.id/', 42, 'tim-x/repo-y'\\), null, 1\\)\\);\")",
+      "PowerShell(npx tsx \"C:\\\\Users\\\\zulfi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--FRONTEND-weekly-app\\\\9b76e8e4-4bd8-48bd-814f-36ba3e2d1d55\\\\scratchpad\\\\test-gitlab-images.ts\")",
+      "PowerShell(Remove-Item *)"
     ]
   }
 }

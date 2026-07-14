@@ -47,6 +47,7 @@ export interface GitlabConfig {
 export interface GitlabMR {
   id: number
   iid: number
+  projectId: number
   title: string
   description: string
   webUrl: string

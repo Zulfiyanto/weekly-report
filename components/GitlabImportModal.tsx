@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import type { WorkItem, WorkTag, GitlabMR } from "@/lib/types"
 import { loadGitlabConfig } from "@/lib/storage"
 import { resolveLabelsToTags } from "@/lib/tags"
+import { extractImageRefs, stripImageMarkdown, fetchMrImageFiles } from "@/lib/gitlabImages"
+import { storeImage } from "@/lib/imageStorage"
 import {
   Dialog,
   DialogContent,
@@ -20,11 +22,13 @@ import {
   Settings,
   ExternalLink,
   Inbox,
+  ImageIcon,
 } from "lucide-react"
 import { toast } from "sonner"
 
 const MAX_DESC = 2000
 const MAX_TITLE = 80
+const MAX_IMAGES_PER_ITEM = 5
 
 function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -57,6 +61,7 @@ export default function GitlabImportModal({
   const [mrs, setMrs] = useState<GitlabMR[]>([])
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [aiEnabled, setAiEnabled] = useState(true)
+  const [imagesEnabled, setImagesEnabled] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [progress, setProgress] = useState("")
@@ -143,14 +148,24 @@ export default function GitlabImportModal({
       return
     }
 
+    const cfg = loadGitlabConfig()
+    if (!cfg) {
+      setHasConfig(false)
+      return
+    }
+
     setIsImporting(true)
     let workingTags = [...allTags]
     const newItems: WorkItem[] = []
+    let totalImages = 0
+    let failedImages = 0
 
     try {
       for (let i = 0; i < chosen.length; i++) {
         const mr = chosen[i]
-        const baseDesc = (mr.description?.trim() || mr.title).slice(0, MAX_DESC)
+        const rawDesc = mr.description?.trim() || ""
+        // Buang markdown gambar dari teks — gambarnya diambil terpisah di bawah
+        const baseDesc = (stripImageMarkdown(rawDesc) || mr.title).slice(0, MAX_DESC)
         let description = baseDesc
 
         if (aiEnabled && baseDesc.trim().length >= 5) {
@@ -163,6 +178,25 @@ export default function GitlabImportModal({
           }
         }
 
+        // Ambil screenshot yang dirujuk deskripsi MR lewat proxy server
+        const imageKeys: string[] = []
+        if (imagesEnabled) {
+          const refCount = extractImageRefs(rawDesc).length
+          if (refCount > 0) {
+            setProgress(`Mengambil screenshot MR ${i + 1}/${chosen.length}...`)
+            const files = await fetchMrImageFiles(cfg, mr, MAX_IMAGES_PER_ITEM)
+            for (const file of files) {
+              try {
+                imageKeys.push(await storeImage(file, imageKeys.length))
+              } catch {
+                failedImages++
+              }
+            }
+            totalImages += imageKeys.length
+            failedImages += Math.min(refCount, MAX_IMAGES_PER_ITEM) - files.length
+          }
+        }
+
         const { tags: updatedTags, tagIds } = resolveLabelsToTags(mr.labels, workingTags)
         workingTags = updatedTags
 
@@ -171,14 +205,20 @@ export default function GitlabImportModal({
           title: mr.title.slice(0, MAX_TITLE),
           description,
           isEnhancing: false,
-          imageKeys: [],
+          imageKeys,
           tags: tagIds,
         })
       }
 
       if (workingTags.length !== allTags.length) onTagsChange(workingTags)
       onImport(newItems)
-      toast.success(`${newItems.length} item berhasil di-import dari GitLab`)
+      toast.success(
+        `${newItems.length} item berhasil di-import dari GitLab` +
+          (totalImages > 0 ? ` (${totalImages} screenshot)` : "")
+      )
+      if (failedImages > 0) {
+        toast.warning(`${failedImages} screenshot gagal diambil — cek token/akses GitLab`)
+      }
       onClose()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Gagal meng-import")
@@ -275,6 +315,7 @@ export default function GitlabImportModal({
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                   {mrs.map((mr) => {
                     const isSel = selected.has(mr.id)
+                    const imgCount = extractImageRefs(mr.description || "").length
                     return (
                       <label
                         key={mr.id}
@@ -293,6 +334,11 @@ export default function GitlabImportModal({
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-gray-400">
                             {mr.projectPath && <span className="font-mono">{mr.projectPath}</span>}
                             <span>· merged {new Date(mr.mergedAt).toLocaleDateString("id-ID")}</span>
+                            {imgCount > 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-emerald-600">
+                                <ImageIcon className="h-2.5 w-2.5" /> {imgCount}
+                              </span>
+                            )}
                             <a
                               href={mr.webUrl}
                               target="_blank"
@@ -332,6 +378,20 @@ export default function GitlabImportModal({
                   <Sparkles className="h-3.5 w-3.5 text-violet-600" />
                   <span className="text-xs font-medium text-violet-700">
                     Rapikan deskripsi dengan AI saat import
+                  </span>
+                </label>
+
+                {/* Screenshot toggle */}
+                <label className="flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={imagesEnabled}
+                    onChange={(e) => setImagesEnabled(e.target.checked)}
+                    className="h-4 w-4 accent-emerald-600"
+                  />
+                  <ImageIcon className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-xs font-medium text-emerald-700">
+                    Ambil screenshot dari deskripsi MR (maks. {MAX_IMAGES_PER_ITEM}/item)
                   </span>
                 </label>
 

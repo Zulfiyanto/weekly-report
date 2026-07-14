@@ -6,6 +6,7 @@ export const runtime = "nodejs"
 interface GitlabMRResponse {
   id: number
   iid: number
+  project_id: number
   title: string
   description: string | null
   web_url: string
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       .map((mr) => ({
         id: mr.id,
         iid: mr.iid,
+        projectId: mr.project_id,
         title: mr.title,
         description: mr.description ?? "",
         webUrl: mr.web_url,

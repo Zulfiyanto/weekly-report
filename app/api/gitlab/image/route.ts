@@ -4,6 +4,18 @@ export const runtime = "nodejs"
 
 const MAX_BYTES = 10 * 1024 * 1024 // 10MB batas aman per gambar
 
+// GitLab menyajikan upload markdown via API dengan content-type
+// application/octet-stream, jadi tipe gambar dideteksi dari magic bytes.
+function sniffImageMime(buf: Buffer): string | null {
+  if (buf.length < 12) return null
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png"
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg"
+  if (buf.subarray(0, 4).toString("ascii") === "GIF8") return "image/gif"
+  if (buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp"
+  if (buf[0] === 0x42 && buf[1] === 0x4d) return "image/bmp"
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { url, token, imageUrl } = await req.json()
@@ -59,17 +71,18 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const contentType = res.headers.get("content-type") || ""
-    if (!contentType.startsWith("image/")) {
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.byteLength > MAX_BYTES) {
+      return NextResponse.json({ error: "Gambar terlalu besar" }, { status: 413 })
+    }
+
+    const headerType = res.headers.get("content-type") || ""
+    const contentType = headerType.startsWith("image/") ? headerType : sniffImageMime(buf)
+    if (!contentType) {
       return NextResponse.json(
         { error: "Respons bukan gambar (mungkin halaman login)" },
         { status: 415 }
       )
-    }
-
-    const buf = Buffer.from(await res.arrayBuffer())
-    if (buf.byteLength > MAX_BYTES) {
-      return NextResponse.json({ error: "Gambar terlalu besar" }, { status: 413 })
     }
 
     const dataUrl = `data:${contentType};base64,${buf.toString("base64")}`
