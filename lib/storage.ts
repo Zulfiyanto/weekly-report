@@ -1,4 +1,15 @@
-import type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig, GithubConfig } from "./types"
+import type {
+  WorkItem,
+  WorkTag,
+  WorkTemplate,
+  ReportDraft,
+  ReportHistory,
+  GitlabConfig,
+  GithubConfig,
+  LemburItem,
+  LemburDraft,
+  LemburProfile,
+} from "./types"
 
 const DRAFT_KEY = "weekly_report_draft"
 const HISTORY_KEY = "weekly_report_history"
@@ -8,6 +19,10 @@ const THEME_KEY = "weekly_report_theme"
 const CUSTOM_COLOR_KEY = "weekly_report_custom_color"
 const GITLAB_KEY = "weekly_report_gitlab"
 const GITHUB_KEY = "weekly_report_github"
+const LEMBUR_DRAFT_KEY = "lembur_draft"
+const LEMBUR_PROFILE_KEY = "lembur_profile"
+const LEMBUR_ABSEN_KEY = "lembur_absen"
+const LEMBUR_TTD_KEY = "lembur_ttd"
 
 export const DEFAULT_TAGS: WorkTag[] = [
   { id: "tag_backend",   label: "Backend",      color: "#3b82f6", isDefault: true },
@@ -273,5 +288,119 @@ export function clearGithubConfig(): void {
   localStorage.removeItem(GITHUB_KEY)
 }
 
+// ─── Lembur draft ────────────────────────────────────────────────────────────
+
+export function saveLemburDraft(draft: Omit<LemburDraft, "savedAt">): void {
+  if (typeof window === "undefined") return
+  const data: LemburDraft = { ...draft, savedAt: new Date().toISOString() }
+  localStorage.setItem(LEMBUR_DRAFT_KEY, JSON.stringify(data))
+}
+
+export function loadLemburDraft(): LemburDraft | null {
+  if (typeof window === "undefined") return null
+  const raw = localStorage.getItem(LEMBUR_DRAFT_KEY)
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    // Migration: pastikan setiap baris punya field yang dibutuhkan
+    parsed.items = Array.isArray(parsed.items)
+      ? parsed.items.map((item: LemburItem) => ({
+          ...item,
+          uraian: item.uraian ?? "",
+          tanggal: item.tanggal ?? "",
+          jamMulai: item.jamMulai ?? "",
+          jamSelesai: item.jamSelesai ?? "",
+          lokasi: item.lokasi ?? "",
+          keterangan: item.keterangan ?? item.uraian ?? "",
+          imageKeys: item.imageKeys ?? [],
+        }))
+      : []
+    return parsed as LemburDraft
+  } catch {
+    return null
+  }
+}
+
+export function clearLemburDraft(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(LEMBUR_DRAFT_KEY)
+}
+
+// ─── Lembur profile (identitas penanda tangan) ───────────────────────────────
+
+export function saveLemburProfile(profile: LemburProfile): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(LEMBUR_PROFILE_KEY, JSON.stringify(profile))
+}
+
+export function loadLemburProfile(): LemburProfile | null {
+  if (typeof window === "undefined") return null
+  const raw = localStorage.getItem(LEMBUR_PROFILE_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as LemburProfile
+  } catch {
+    return null
+  }
+}
+
+// ─── Daftar absen (teks mentah yang ditempel user) ───────────────────────────
+
+export function saveAbsenText(text: string): void {
+  if (typeof window === "undefined") return
+  localStorage.setItem(LEMBUR_ABSEN_KEY, text)
+}
+
+export function loadAbsenText(): string {
+  if (typeof window === "undefined") return ""
+  return localStorage.getItem(LEMBUR_ABSEN_KEY) ?? ""
+}
+
+export function clearAbsenText(): void {
+  if (typeof window === "undefined") return
+  localStorage.removeItem(LEMBUR_ABSEN_KEY)
+}
+
+// ─── Tanda tangan ────────────────────────────────────────────────────────────
+// Disimpan terpisah dari draft: ukurannya besar (data URL PNG) dan nilainya
+// dipakai berulang tiap bulan, jadi tidak perlu ikut ditulis ulang tiap detik
+// oleh auto-save draft.
+
+export interface LemburTtd {
+  pekerja?: string  // data URL PNG
+  manager?: string
+}
+
+export function loadLemburTtd(): LemburTtd {
+  if (typeof window === "undefined") return {}
+  const raw = localStorage.getItem(LEMBUR_TTD_KEY)
+  if (!raw) return {}
+  try {
+    return JSON.parse(raw) as LemburTtd
+  } catch {
+    return {}
+  }
+}
+
+export function saveLemburTtd(ttd: LemburTtd): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(LEMBUR_TTD_KEY, JSON.stringify(ttd))
+  } catch {
+    // Kuota localStorage penuh — biarkan tanda tangan lama yang tersimpan
+  }
+}
+
 // Re-export types for convenience
-export type { WorkItem, WorkTag, WorkTemplate, ReportDraft, ReportHistory, GitlabConfig, GithubConfig }
+export type {
+  WorkItem,
+  WorkTag,
+  WorkTemplate,
+  ReportDraft,
+  ReportHistory,
+  GitlabConfig,
+  GithubConfig,
+  LemburItem,
+  LemburDraft,
+  LemburProfile,
+}

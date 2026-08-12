@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react"
 import type { WorkItem, WorkTag, GitlabMR } from "@/lib/types"
 import { loadGitlabConfig } from "@/lib/storage"
-import { resolveLabelsToTags } from "@/lib/tags"
-import { extractImageRefs, stripImageMarkdown, fetchMrImageFiles } from "@/lib/gitlabImages"
-import { storeImage } from "@/lib/imageStorage"
+import { extractImageRefs } from "@/lib/gitlabImages"
+import { fetchMergeRequests, processMr, MAX_IMAGES_PER_ITEM } from "@/lib/gitlabImport"
 import {
   Dialog,
   DialogContent,
@@ -25,10 +24,6 @@ import {
   ImageIcon,
 } from "lucide-react"
 import { toast } from "sonner"
-
-const MAX_DESC = 2000
-const MAX_TITLE = 80
-const MAX_IMAGES_PER_ITEM = 5
 
 function generateId(): string {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -94,15 +89,7 @@ export default function GitlabImportModal({
     setIsFetching(true)
     setFetched(false)
     try {
-      const res = await fetch("/api/gitlab/merge-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: cfg.url, token: cfg.token, dateFrom, dateTo }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Gagal mengambil merge request")
-
-      const list: GitlabMR[] = data.mergeRequests ?? []
+      const list = await fetchMergeRequests(cfg, dateFrom, dateTo)
       setMrs(list)
       setSelected(new Set(list.map((mr) => mr.id)))
       setFetched(true)
@@ -125,19 +112,6 @@ export default function GitlabImportModal({
       else next.add(id)
       return next
     })
-  }
-
-  // ── Enhance a single description via existing AI route ─────────────────────
-  const enhanceText = async (text: string): Promise<string> => {
-    const res = await fetch("/api/ai-enhance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-      signal: AbortSignal.timeout(15000),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || "Gagal memproses AI")
-    return data.enhanced as string
   }
 
   // ── Import selected MRs as work items ──────────────────────────────────────
@@ -163,50 +137,28 @@ export default function GitlabImportModal({
     try {
       for (let i = 0; i < chosen.length; i++) {
         const mr = chosen[i]
-        const rawDesc = mr.description?.trim() || ""
-        // Buang markdown gambar dari teks — gambarnya diambil terpisah di bawah
-        const baseDesc = (stripImageMarkdown(rawDesc) || mr.title).slice(0, MAX_DESC)
-        let description = baseDesc
-
-        if (aiEnabled && baseDesc.trim().length >= 5) {
-          setProgress(`Merapikan dengan AI ${i + 1}/${chosen.length}...`)
-          try {
-            const enhanced = await enhanceText(baseDesc)
-            if (enhanced?.trim()) description = enhanced.trim().slice(0, MAX_DESC)
-          } catch {
-            // Biarkan deskripsi mentah bila AI gagal untuk item ini
-          }
-        }
-
-        // Ambil screenshot yang dirujuk deskripsi MR lewat proxy server
-        const imageKeys: string[] = []
-        if (imagesEnabled) {
-          const refCount = extractImageRefs(rawDesc).length
-          if (refCount > 0) {
-            setProgress(`Mengambil screenshot MR ${i + 1}/${chosen.length}...`)
-            const files = await fetchMrImageFiles(cfg, mr, MAX_IMAGES_PER_ITEM)
-            for (const file of files) {
-              try {
-                imageKeys.push(await storeImage(file, imageKeys.length))
-              } catch {
-                failedImages++
-              }
-            }
-            totalImages += imageKeys.length
-            failedImages += Math.min(refCount, MAX_IMAGES_PER_ITEM) - files.length
-          }
-        }
-
-        const { tags: updatedTags, tagIds } = resolveLabelsToTags(mr.labels, workingTags)
-        workingTags = updatedTags
+        const processed = await processMr(cfg, mr, {
+          aiEnabled,
+          imagesEnabled,
+          tags: workingTags,
+          onProgress: (step) =>
+            setProgress(
+              step === "ai"
+                ? `Merapikan dengan AI ${i + 1}/${chosen.length}...`
+                : `Mengambil screenshot MR ${i + 1}/${chosen.length}...`
+            ),
+        })
+        workingTags = processed.tags
+        totalImages += processed.imageKeys.length
+        failedImages += processed.failedImages
 
         newItems.push({
           id: generateId(),
-          title: mr.title.slice(0, MAX_TITLE),
-          description,
+          title: processed.title,
+          description: processed.description,
           isEnhancing: false,
-          imageKeys,
-          tags: tagIds,
+          imageKeys: processed.imageKeys,
+          tags: processed.tagIds,
         })
       }
 

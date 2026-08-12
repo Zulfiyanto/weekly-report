@@ -38,6 +38,8 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%]",
         "w-full max-w-lg bg-white rounded-xl shadow-2xl border border-gray-100",
+        // Jangan sampai isi yang panjang menjulur keluar layar
+        "max-h-[90vh] overflow-y-auto",
         "p-6 focus:outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

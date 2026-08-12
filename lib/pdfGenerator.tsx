@@ -6,7 +6,7 @@ import { parseMarkdown, type InlineToken } from "./markdown"
 
 // ── Register Roboto font (local — avoids external URL warnings in PDF viewers) ─
 let _fontsRegistered = false
-function ensureFonts() {
+export function ensureFonts() {
   if (_fontsRegistered) return
   _fontsRegistered = true
   const base = typeof window !== "undefined" ? window.location.origin : ""
